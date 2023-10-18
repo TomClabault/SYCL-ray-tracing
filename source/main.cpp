@@ -70,8 +70,8 @@ int main(int argc, char* argv[])
 
     Image image(width, height);
 
-    rapidobj::Result parsed_obj = rapidobj::ParseFile("../../../data/cornell.obj", rapidobj::MaterialLibrary::Default());
-    //rapidobj::Result parsed_obj = rapidobj::ParseFile("../../../data/test_triangle_area_sampling.obj", rapidobj::MaterialLibrary::Default());
+    rapidobj::Result parsed_obj = rapidobj::ParseFile("../data/cornell.obj", rapidobj::MaterialLibrary::Default());
+    //rapidobj::Result parsed_obj = rapidobj::ParseFile("../data/test_triangle_area_sampling.obj", rapidobj::MaterialLibrary::Default());
     if (parsed_obj.error)
     {
         std::cout << "There was an error loading the OBJ file: " << parsed_obj.error.code.message() << std::endl;

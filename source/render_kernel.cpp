@@ -97,7 +97,7 @@ void RenderKernel::ray_trace_pixel(int x, int y) const
         Color throughput = Color(1.0f, 1.0f, 1.0f);
         Color sample_color = Color(0.0f, 0.0f, 0.0f);
         RayState next_ray_state = RayState::BOUNCE;
-        float random_direction_pdf = 1.0f;
+        float random_direction_pdf;
         for (int bounce = 0; bounce < MAX_BOUNCES; bounce++)
         {
             if (next_ray_state == BOUNCE)
@@ -111,6 +111,7 @@ void RenderKernel::ray_trace_pixel(int x, int y) const
                     int material_index = m_materials_indices_buffer[closest_hit_info.triangle_index];
                     SimpleMaterial mat = m_materials_buffer_access[material_index];
 
+                    //Cosine angle
                     throughput *= mat.diffuse * sycl::max(0.0f, dot(-ray.direction, closest_hit_info.normal_at_inter));
                     if (bounce == 0)
                         sample_color += mat.emission;
@@ -147,16 +148,20 @@ void RenderKernel::ray_trace_pixel(int x, int y) const
                         radiance /= M_PI;
                     }
 
+                    sample_color += radiance * throughput;
+
+
+
                     Vector random_dir = uniform_direction_around_normal(closest_hit_info.normal_at_inter, random_direction_pdf, random_number_generator);
                     Point new_ray_origin = closest_hit_info.inter_point + closest_hit_info.normal_at_inter * 1.0e-4f;
 
                     ray = Ray(new_ray_origin, normalize(random_dir));
                     next_ray_state = RayState::BOUNCE;
 
-                    sample_color += radiance * throughput;
-
                     //Cosine angle of the bounced ray
-                    throughput /= random_direction_pdf;
+                    if (bounce > 0) //Not applying the PDF for the first ray as they are not sampled
+                        //according to a specific distribution, they come from the camera
+                        throughput /= random_direction_pdf;
                 }
                 else
                     next_ray_state = RayState::MISSED;
