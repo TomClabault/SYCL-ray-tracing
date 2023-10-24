@@ -97,7 +97,6 @@ void RenderKernel::ray_trace_pixel(int x, int y) const
         Color throughput = Color(1.0f, 1.0f, 1.0f);
         Color sample_color = Color(0.0f, 0.0f, 0.0f);
         RayState next_ray_state = RayState::BOUNCE;
-        float random_direction_pdf = 1.0f;
         for (int bounce = 0; bounce < MAX_BOUNCES; bounce++)
         {
             if (next_ray_state == BOUNCE)
@@ -153,6 +152,8 @@ void RenderKernel::ray_trace_pixel(int x, int y) const
                         radiance /= distance_to_light * distance_to_light;
                         //PDF: Probability of having chosen this point on this exact light source
                         radiance /= pdf;
+                        //BRDF of the illuminated surface
+                        radiance /= M_PI;
                     }
 
                     float random_direction_pdf;
@@ -218,7 +219,7 @@ void RenderKernel::ray_trace_pixel(int x, int y) const
         m_frame_buffer_access[y * m_width + x] /= RENDER_KERNEL_ITERATIONS;
 
         const float gamma = 2.2;
-        const float exposure = 1.5f;
+        const float exposure = 2.5f;
         Color hdrColor = m_frame_buffer_access[y * m_width + x];
 
         //Exposure tone mapping
