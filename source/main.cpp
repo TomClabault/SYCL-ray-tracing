@@ -70,8 +70,8 @@ int main(int argc, char* argv[])
 
     Image image(width, height);
 
-    rapidobj::Result parsed_obj = rapidobj::ParseFile("../data/cornell.obj", rapidobj::MaterialLibrary::Default());
-    //rapidobj::Result parsed_obj = rapidobj::ParseFile("../data/test_triangle_area_sampling.obj", rapidobj::MaterialLibrary::Default());
+    rapidobj::Result parsed_obj = rapidobj::ParseFile("../SYCL-ray-tracing/data/cornell.obj", rapidobj::MaterialLibrary::Default());
+    //rapidobj::Result parsed_obj = rapidobj::ParseFile("../SYCL-ray-tracing/data/test_triangle_area_sampling.obj", rapidobj::MaterialLibrary::Default());
     if (parsed_obj.error)
     {
         std::cout << "There was an error loading the OBJ file: " << parsed_obj.error.code.message() << std::endl;
@@ -142,7 +142,7 @@ int main(int argc, char* argv[])
             const auto local_range = sycl::range<2>(TILE_SIZE_X, TILE_SIZE_Y);
             const auto coordinates_indices = sycl::nd_range<2>(global_range, local_range);
 
-            sycl::stream debug_out_stream(1024, 128, handler);
+            sycl::stream debug_out_stream(65536, 256, handler);
 
             auto render_kernel = RenderKernel(width, height, i,
                                               image_buffer_access,
@@ -171,3 +171,43 @@ int main(int argc, char* argv[])
 
     return 0;
 }
+
+//#include <sycl/sycl.hpp>
+//#include <vector>
+
+//#define LOOP_ITERATION 100000000
+//#define N 100000
+
+//int main()
+//{
+//    std::vector<float> v(N);
+
+//    sycl::queue q{sycl::gpu_selector_v};
+//    sycl::buffer buf{v};
+
+//    q.submit([&](sycl::handler& cgh)
+//    {
+//        auto acc {buf.get_access(cgh,sycl::read_write)};
+
+//        cgh.parallel_for(N, [=](sycl::id<1> id)
+//        {
+//            float x = 0.0f;
+//            for (int i = 0; i < LOOP_ITERATION; i++)
+//            {
+//                x += i / 2;
+
+//                float cosine = sycl::cos(sycl::sqrt(x));
+//                float sine = sycl::sin(x);
+//                float length = sycl::sqrt(cosine * cosine + sine * sine);
+
+//                x /= sycl::cos(length) * sycl::sin(length);
+//            }
+
+//            acc[id] = x;
+//        });
+//    }).wait();
+
+//    std::cout << "Done!" << std::endl;
+
+//    return 0;
+//}

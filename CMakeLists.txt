@@ -6,28 +6,34 @@ else()
     cmake_minimum_required(VERSION 3.20.5)
 endif()
 
-project(TP_RT LANGUAGES CXX)
+project(SYCL_RayTracing LANGUAGES CXX)
 
 find_package(IntelDPCPP REQUIRED)
 
 file(GLOB SYCL_HEADERS "/opt/intel/oneapi/compiler/2023.2.1/linux/include/sycl/*.hpp" "/opt/intel/oneapi/compiler/2023.2.1/linux/include/sycl/CL/*.hpp")
 
-add_executable(TP_RT
+add_executable(SYCL_RayTracing
     ${SYCL_HEADERS}
 
+    source/bvh.cpp
     source/camera.cpp
     source/color.cpp
+    source/flattened_bvh.cpp
     source/image_io.cpp
     source/main.cpp
     source/mat.cpp
+    source/ray.cpp
     source/render_kernel.cpp
     source/tests.cpp
     source/triangle.cpp
     source/triangle.cpp
     source/vec.cpp
 
+    include/bvh.h
+    include/bvh_tests.h
     include/camera.h
     include/color.h
+    include/flattened_bvh.h
     include/image.h
     include/image_io.h
     include/mat.h
@@ -44,14 +50,14 @@ add_executable(TP_RT
 
     rapidobj/rapidobj.hpp)
 
-set_property(TARGET TP_RT PROPERTY CXX_STANDARD 17)
+set_property(TARGET SYCL_RayTracing PROPERTY CXX_STANDARD 17)
 
 set(THREADS_PREFER_PTHREAD_FLAG ON)
 find_package(Threads REQUIRED)
-target_link_libraries(TP_RT PRIVATE Threads::Threads)
+target_link_libraries(SYCL_RayTracing PRIVATE Threads::Threads)
 
-target_include_directories(TP_RT PRIVATE "/opt/intel/oneapi/compiler/2023.2.1/linux/include/")
-target_include_directories(TP_RT PRIVATE "include/")
-target_include_directories(TP_RT PRIVATE "stbi/")
-target_include_directories(TP_RT PRIVATE "rapidobj/")
-target_include_directories(TP_RT PRIVATE ".")
+target_include_directories(SYCL_RayTracing PRIVATE "/opt/intel/oneapi/compiler/2023.2.1/linux/include/")
+target_include_directories(SYCL_RayTracing PRIVATE "include/")
+target_include_directories(SYCL_RayTracing PRIVATE "stbi/")
+target_include_directories(SYCL_RayTracing PRIVATE "rapidobj/")
+target_include_directories(SYCL_RayTracing PRIVATE ".")

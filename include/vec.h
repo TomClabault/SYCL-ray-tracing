@@ -39,20 +39,20 @@ struct Point
 };
 
 //! renvoie le point origine (0, 0, 0)
-Point Origin( );
+SYCL_EXTERNAL Point Origin( );
 
 //! renvoie la distance etre 2 points.
-float distance( const Point& a, const Point& b );
+SYCL_EXTERNAL float distance( const Point& a, const Point& b );
 //! renvoie le carre de la distance etre 2 points.
-float distance2( const Point& a, const Point& b );
+SYCL_EXTERNAL float distance2( const Point& a, const Point& b );
 
 //! renvoie le milieu du segment ab.
-Point center( const Point& a, const Point& b );
+SYCL_EXTERNAL Point center( const Point& a, const Point& b );
 
 //! renvoie la plus petite composante de chaque point. x, y, z= min(a.x, b.x), min(a.y, b.y), min(a.z, b.z).
-Point min( const Point& a, const Point& b );
+SYCL_EXTERNAL Point min( const Point& a, const Point& b );
 //! renvoie la plus grande composante de chaque point. x, y, z= max(a.x, b.x), max(a.y, b.y), max(a.z, b.z).
-Point max( const Point& a, const Point& b );
+SYCL_EXTERNAL Point max( const Point& a, const Point& b );
 
 
 //! representation d'un vecteur 3d.
@@ -226,6 +226,20 @@ inline std::ostream& operator<<(std::ostream& o, const Vector& v)
 {
     o<<"v("<<v.x<<","<<v.y<<","<<v.z<<")";
     return o;
+}
+
+inline const sycl::stream &operator<<(const sycl::stream& stream, const Point& p)
+{
+    stream << "(" << p.x << ", " << p.y << ", " << p.z << ")";
+
+    return stream;
+}
+
+inline const sycl::stream &operator<<(const sycl::stream& stream, const Vector& v)
+{
+    stream << "(" << v.x << ", " << v.y << ", " << v.z << ")";
+
+    return stream;
 }
 
 ///@}

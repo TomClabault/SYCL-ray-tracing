@@ -97,7 +97,7 @@ void RenderKernel::ray_trace_pixel(int x, int y) const
         Color throughput = Color(1.0f, 1.0f, 1.0f);
         Color sample_color = Color(0.0f, 0.0f, 0.0f);
         RayState next_ray_state = RayState::BOUNCE;
-        float random_direction_pdf;
+        float random_direction_pdf = 1.0f;
         for (int bounce = 0; bounce < MAX_BOUNCES; bounce++)
         {
             if (next_ray_state == BOUNCE)
@@ -107,14 +107,23 @@ void RenderKernel::ray_trace_pixel(int x, int y) const
 
                 if (intersection_found)
                 {
-                    //Indirect lighting
-                    int material_index = m_materials_indices_buffer[closest_hit_info.triangle_index];
-                    SimpleMaterial mat = m_materials_buffer_access[material_index];
+//                    if (x > m_width / 2 - 10 && x < m_width / 2 + 10 && y < m_height / 2 + 10 && y > m_height / 2 - 10)
+//                    {
+//                        if (ray.origin.x > -3 && ray.origin.x < 3
+//                                && ray.origin.y > -3 && ray.origin.y < 3
+//                                && ray.origin.z > -3 && ray.origin.z < 3
+//                                && ray.direction.x > -3 && ray.direction.x < 3
+//                                && ray.direction.y > -3 && ray.direction.y < 3
+//                                && ray.direction.z > -3 && ray.direction.z < 3
+//                                && closest_hit_info.inter_point.x > -3 && closest_hit_info.inter_point.x < 3
+//                                && closest_hit_info.inter_point.y > -3 && closest_hit_info.inter_point.y < 3
+//                                && closest_hit_info.inter_point.z > -3 && closest_hit_info.inter_point.z < 3
+//                                && sycl::abs(closest_hit_info.inter_point.x) > 0.001f
+//                                && sycl::abs(closest_hit_info.inter_point.y) > 0.001f
+//                                && sycl::abs(closest_hit_info.inter_point.z) > 0.001f)
+//                            m_out_stream  << sycl::setprecision(6) << "inter: " << ray.origin << ", " << ray.direction << ".." << "inter point: " << closest_hit_info.inter_point << ".]" << sycl::endl;
+//                    }
 
-                    //Cosine angle
-                    throughput *= mat.diffuse * sycl::max(0.0f, dot(-ray.direction, closest_hit_info.normal_at_inter));
-                    if (bounce == 0)
-                        sample_color += mat.emission;
 
 
                     // Direct lighting
@@ -144,27 +153,48 @@ void RenderKernel::ray_trace_pixel(int x, int y) const
                         radiance /= distance_to_light * distance_to_light;
                         //PDF: Probability of having chosen this point on this exact light source
                         radiance /= pdf;
-                        //The illuminated surface is Lambertian
-                        radiance /= M_PI;
                     }
 
-                    sample_color += radiance * throughput;
-
-
-
+                    float random_direction_pdf;
                     Vector random_dir = uniform_direction_around_normal(closest_hit_info.normal_at_inter, random_direction_pdf, random_number_generator);
                     Point new_ray_origin = closest_hit_info.inter_point + closest_hit_info.normal_at_inter * 1.0e-4f;
 
+
+
+
+
+                    //Indirect lighting
+                    int material_index = m_materials_indices_buffer[closest_hit_info.triangle_index];
+                    SimpleMaterial mat = m_materials_buffer_access[material_index];
+
+                    Color brdf = mat.diffuse / M_PI;
+                    throughput *= brdf * sycl::max(0.0f, dot(random_dir, closest_hit_info.normal_at_inter));
+                    if (bounce == 0)
+                        sample_color += mat.emission;
+
+//                    return [(radiance + [(radiance + indirect() / random_direction_pdf) * throughput] / random_direction_pdf) * throughput];
+                    sample_color += radiance * throughput;
+
+                    throughput /= random_direction_pdf;
+
                     ray = Ray(new_ray_origin, normalize(random_dir));
                     next_ray_state = RayState::BOUNCE;
-
-                    //Cosine angle of the bounced ray
-                    if (bounce > 0) //Not applying the PDF for the first ray as they are not sampled
-                        //according to a specific distribution, they come from the camera
-                        throughput /= random_direction_pdf;
                 }
                 else
+                {
+//                    if (x > m_width / 2 - 10 && x < m_width / 2 + 10 && y < m_height / 2 + 10 && y > m_height / 2 - 10)
+//                    {
+//                        if (ray.origin.x > -3 && ray.origin.x < 3
+//                                && ray.origin.y > -3 && ray.origin.y < 3
+//                                && ray.origin.z > -3 && ray.origin.z < 3
+//                                && ray.direction.x > -3 && ray.direction.x < 3
+//                                && ray.direction.y > -3 && ray.direction.y < 3
+//                                && ray.direction.z > -3 && ray.direction.z < 3)
+//                            m_out_stream << sycl::setprecision(6) << "no inter: " << ray.origin << ", " << ray.direction << "." << sycl::endl;
+//                    }
+
                     next_ray_state = RayState::MISSED;
+                }
             }
             else if (next_ray_state == MISSED)
             {
@@ -188,7 +218,7 @@ void RenderKernel::ray_trace_pixel(int x, int y) const
         m_frame_buffer_access[y * m_width + x] /= RENDER_KERNEL_ITERATIONS;
 
         const float gamma = 2.2;
-        const float exposure = 1.0f;
+        const float exposure = 1.5f;
         Color hdrColor = m_frame_buffer_access[y * m_width + x];
 
         //Exposure tone mapping

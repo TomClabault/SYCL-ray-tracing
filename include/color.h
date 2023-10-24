@@ -66,5 +66,11 @@ SYCL_EXTERNAL Color operator/ ( const Color& a, const Color& b );
 SYCL_EXTERNAL Color operator/ ( const float k, const Color& c );
 SYCL_EXTERNAL Color operator/ ( const Color& c, const float k );
 
+inline const sycl::stream& operator << (const sycl::stream& os, const Color& color)
+{
+    os << "Color[" << color.r << ", " << color.g << ", " << color.b << "]";
+    return os;
+}
+
 ///@}
 #endif

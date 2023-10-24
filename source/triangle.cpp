@@ -1,7 +1,12 @@
 #include "triangle.h"
 
+Point Triangle::bbox_centroid() const
+{
+    return (min(m_a, min(m_b, m_c)) + max(m_a, max(m_b, m_c))) / 2;
+}
+
 //From https://en.wikipedia.org/wiki/M%C3%B6ller%E2%80%93Trumbore_intersection_algorithm
-bool Triangle::intersect(Ray& ray, HitInfo& hit_info) const
+bool Triangle::intersect(const Ray& ray, HitInfo& hit_info) const
 {
     const float EPSILON = 0.0000001;
    Vector edge1, edge2, h, s, q;
@@ -44,4 +49,14 @@ bool Triangle::intersect(Ray& ray, HitInfo& hit_info) const
    }
    else // This means that there is a line intersection but not a ray intersection.
        return false;
+}
+
+Point& Triangle::operator[] (int i)
+{
+    return *((&m_a) + i);
+}
+
+const Point& Triangle::operator[] (int i) const
+{
+    return *((&m_a) + i);
 }
