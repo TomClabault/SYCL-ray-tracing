@@ -3,6 +3,7 @@
 
 #include <array>
 #include <cmath>
+#include <deque>
 #include <limits>
 #include <queue>
 
@@ -10,6 +11,8 @@
 #include "flattened_bvh.h"
 #include "triangle.h"
 #include "ray.h"
+
+extern int globa_index;//TODO remove
 
 class FlattenedBVH;
 
@@ -20,8 +23,8 @@ public:
     {
         static Vector PLANE_NORMALS[BVHConstants::PLANES_COUNT];
 
-        float _d_near[BVHConstants::PLANES_COUNT];
-        float _d_far[BVHConstants::PLANES_COUNT];
+        std::array<float, BVHConstants::PLANES_COUNT> _d_near;
+        std::array<float, BVHConstants::PLANES_COUNT> _d_far;
 
         BoundingVolume()
         {
@@ -32,7 +35,7 @@ public:
             }
         }
 
-        static void triangle_volume(const Triangle& triangle, float d_near[BVHConstants::PLANES_COUNT], float d_far[BVHConstants::PLANES_COUNT])
+        static void triangle_volume(const Triangle& triangle, std::array<float, BVHConstants::PLANES_COUNT>& d_near, std::array<float, BVHConstants::PLANES_COUNT>& d_far)
         {
             for (int i = 0; i < BVHConstants::PLANES_COUNT; i++)
             {
@@ -46,7 +49,7 @@ public:
             }
         }
 
-        void extend_volume(const float d_near[BVHConstants::PLANES_COUNT], const float d_far[BVHConstants::PLANES_COUNT])
+        void extend_volume(const std::array<float, BVHConstants::PLANES_COUNT>& d_near, const std::array<float, BVHConstants::PLANES_COUNT>& d_far)
         {
             for (int i = 0; i < BVHConstants::PLANES_COUNT; i++)
             {
@@ -62,8 +65,8 @@ public:
 
         void extend_volume(const Triangle& triangle)
         {
-            float d_near[BVHConstants::PLANES_COUNT];
-            float d_far[BVHConstants::PLANES_COUNT];
+            std::array<float, BVHConstants::PLANES_COUNT> d_near;
+            std::array<float, BVHConstants::PLANES_COUNT> d_far;
 
             for (int i = 0; i < BVHConstants::PLANES_COUNT; i++)
             {
@@ -75,10 +78,10 @@ public:
             extend_volume(d_near, d_far);
         }
 
-        static bool intersect(float d_near[BVHConstants::PLANES_COUNT],
-                              float d_far[BVHConstants::PLANES_COUNT],
-                              float denoms[BVHConstants::PLANES_COUNT],
-                              float numers[BVHConstants::PLANES_COUNT])
+        static bool intersect(const std::array<float, BVHConstants::PLANES_COUNT>& d_near,
+                              const std::array<float, BVHConstants::PLANES_COUNT>& d_far,
+                              const std::array<float, BVHConstants::PLANES_COUNT>& denoms,
+                              const std::array<float, BVHConstants::PLANES_COUNT>& numers)
         {
             float t_near = -INFINITY;
             float t_far = INFINITY;
@@ -169,14 +172,14 @@ public:
           * Once the objects have been inserted in the hierarchy, this function computes
           * the bounding volume of all the node in the hierarchy
           */
-        BoundingVolume compute_volume()
+        BoundingVolume compute_volume(const std::vector<Triangle>& triangles_geometry)
         {
             if (_is_leaf)
-                for (const Triangle* triangle : _triangles)
-                    _bounding_volume.extend_volume(*triangle);
+                for (int triangle_id : _triangles)
+                    _bounding_volume.extend_volume(triangles_geometry[triangle_id]);
             else
                 for (int i = 0; i < 8; i++)
-                    _bounding_volume.extend_volume(_children[i]->compute_volume());
+                    _bounding_volume.extend_volume(_children[i]->compute_volume(triangles_geometry));
 
             return _bounding_volume;
         }
@@ -195,15 +198,25 @@ public:
             _children[5] = new OctreeNode(Point(middle_x, _min.y, middle_z), Point(_max.x, middle_y, _max.z));
             _children[6] = new OctreeNode(_min + Point(0, middle_y, middle_z), Point(middle_x, _max.y, _max.z));
             _children[7] = new OctreeNode(Point(middle_x, middle_y, middle_z), Point(_max.x, _max.y, _max.z));
+
+            //TODO remove
+            _children[0]->debug_index = globa_index++;
+            _children[1]->debug_index = globa_index++;
+            _children[2]->debug_index = globa_index++;
+            _children[3]->debug_index = globa_index++;
+            _children[4]->debug_index = globa_index++;
+            _children[5]->debug_index = globa_index++;
+            _children[6]->debug_index = globa_index++;
+            _children[7]->debug_index = globa_index++;
         }
 
-        void insert(Triangle* triangle, int current_depth, int max_depth, int leaf_max_obj_count)
+        void insert(const std::vector<Triangle>& triangles_geometry, int triangle_id_to_insert, int current_depth, int max_depth, int leaf_max_obj_count)
         {
             bool depth_exceeded = current_depth == max_depth;
 
             if (_is_leaf || depth_exceeded)
             {
-                _triangles.push_back(triangle);
+                _triangles.push_back(triangle_id_to_insert);
 
                 if (_triangles.size() > leaf_max_obj_count && !depth_exceeded)
                 {
@@ -211,21 +224,22 @@ public:
 
                     create_children(max_depth, leaf_max_obj_count);
 
-                    for (Triangle* triangle : _triangles)
-                        insert_to_children(triangle, current_depth, max_depth, leaf_max_obj_count);
+                    for (int triangle_id : _triangles)
+                        insert_to_children(triangles_geometry, triangle_id, current_depth, max_depth, leaf_max_obj_count);
 
                     _triangles.clear();
                     _triangles.shrink_to_fit();
                 }
             }
             else
-                insert_to_children(triangle, current_depth, max_depth, leaf_max_obj_count);
+                insert_to_children(triangles_geometry, triangle_id_to_insert, current_depth, max_depth, leaf_max_obj_count);
 
         }
 
-        void insert_to_children(Triangle* triangle, int current_depth, int max_depth, int leaf_max_obj_count)
+        void insert_to_children(const std::vector<Triangle>& triangles_geometry, int triangle_id_to_insert, int current_depth, int max_depth, int leaf_max_obj_count)
         {
-            Point bbox_centroid = triangle->bbox_centroid();
+            const Triangle& triangle = triangles_geometry[triangle_id_to_insert];
+            Point bbox_centroid = triangle.bbox_centroid();
 
             float middle_x = (_min.x + _max.x) / 2;
             float middle_y = (_min.y + _max.y) / 2;
@@ -237,10 +251,10 @@ public:
             if (bbox_centroid.y > middle_y) octant_index += 2;
             if (bbox_centroid.z > middle_z) octant_index += 4;
 
-            _children[octant_index]->insert(triangle, current_depth + 1, max_depth, leaf_max_obj_count);
+            _children[octant_index]->insert(triangles_geometry, triangle_id_to_insert, current_depth + 1, max_depth, leaf_max_obj_count);
         }
 
-        bool intersect(const Ray& ray, HitInfo& hit_info) const
+        bool intersect(const std::vector<Triangle>& triangles_geometry, const Ray& ray, HitInfo& hit_info) const
         {
             float trash;
 
@@ -253,10 +267,10 @@ public:
                 numers[i] = dot(BoundingVolume::PLANE_NORMALS[i], Vector(ray.origin));
             }
 
-            return intersect(ray, hit_info, trash, denoms, numers);
+            return intersect(triangles_geometry, ray, hit_info, trash, denoms, numers);
         }
 
-        bool intersect(const Ray& ray, HitInfo& hit_info, float& t_near, float* denoms, float* numers) const
+        bool intersect(const std::vector<Triangle>& triangles_geometry, const Ray& ray, HitInfo& hit_info, float& t_near, float* denoms, float* numers) const
         {
             float t_far, trash;
 
@@ -265,10 +279,12 @@ public:
 
             if (_is_leaf)
             {
-                for (Triangle* triangle : _triangles)
+                for (int triangle_id : _triangles)
                 {
+                    const Triangle& triangle = triangles_geometry[triangle_id];
+
                     HitInfo local_hit_info;
-                    if (triangle->intersect(ray, local_hit_info))
+                    if (triangle.intersect(ray, local_hit_info))
                         if (local_hit_info.t < hit_info.t || hit_info.t == -1)
                             hit_info = local_hit_info;
                 }
@@ -293,7 +309,7 @@ public:
                 QueueElement top_element = intersection_queue.top();
                 intersection_queue.pop();
 
-                if (top_element._node->intersect(ray, hit_info, inter_distance, denoms, numers))
+                if (top_element._node->intersect(triangles_geometry, ray, hit_info, inter_distance, denoms, numers))
                 {
                     closest_inter = std::min(closest_inter, inter_distance);
                     intersection_found = true;
@@ -321,9 +337,48 @@ public:
 
         std::vector<FlattenedBVH::FlattenedNode> flatten(int* current_node_index)
         {
-//            std::vector<FlattenedBVH::FlattenedNode> nodes;
+            std::deque<FlattenedBVH::FlattenedNode> nodes_deque;
 
+            FlattenedBVH::FlattenedNode current_node;
+            for (int i = 0; i < BVHConstants::PLANES_COUNT; i++)
+            {
+                current_node.d_far[i] = _bounding_volume._d_far[i];
+                current_node.d_near[i] = _bounding_volume._d_near[i];
+            }
+            current_node.is_leaf = _is_leaf;
+
+            if (_is_leaf)
+            {
+                current_node.nb_triangles = _triangles.size();
+                for (int i = 0; i < _triangles.size(); i++)
+                    current_node.triangles_indices[i] = _triangles[i];
+
+                for (int i = 0; i < 8; i++)
+                    current_node.children[i] = -1;
+            }
+            else
+            {
+                for (int i = 0; i < 8; i++)
+                {
+                    current_node.children[i] = ++(*current_node_index);
+
+                    std::vector<FlattenedBVH::FlattenedNode> children_nodes = _children[i]->flatten(current_node_index);
+                    nodes_deque.insert(nodes_deque.end(), children_nodes.begin(), children_nodes.end());
+                }
+            }
+
+            nodes_deque.push_front(current_node);
+
+            std::vector<FlattenedBVH::FlattenedNode> vector_nodes;
+            for (FlattenedBVH::FlattenedNode& node : nodes_deque)
+                vector_nodes.push_back(node);
+
+            return vector_nodes;
+
+//            std::deque<FlattenedBVH::FlattenedNode> nodes_deque;
 //            FlattenedBVH::FlattenedNode my_node;
+//            my_node.debug_index = debug_index;
+
 //            for (int i = 0; i < BVHConstants::PLANES_COUNT; i++)
 //            {
 //                my_node.d_far[i] = _bounding_volume._d_far[i];
@@ -340,34 +395,38 @@ public:
 //                my_node.nb_triangles = _triangles.size();
 //                for (int i = 0; i < _triangles.size(); i++)
 //                    my_node.triangles_indices[i] = _triangles[i];
-
-//                nodes.push_back(my_node);
 //            }
 //            else
 //            {
+//                my_node.is_leaf = false;
+
 //                for (int i = 0; i < 8; i++)
 //                {
 //                    (*current_node_index)++;
-//                    std::vector<FlattenedBVH::FlattenedNode> child_nodes = _children[i]->flatten(current_node_index);
 //                    my_node.children[i] = *current_node_index;
+//                    std::vector<FlattenedBVH::FlattenedNode> child_nodes = _children[i]->flatten(current_node_index);
 
-//                    nodes.insert(nodes.begin(), child_nodes.begin(), child_nodes.end());
+//                    nodes_deque.insert(nodes_deque.begin(), child_nodes.begin(), child_nodes.end());
 //                }
-
-//                nodes.push_back(my_node);
 //            }
 
-//            return nodes;
+//            nodes_deque.push_front(my_node);
 
-            return std::vector<FlattenedBVH::FlattenedNode>();
+//            std::vector<FlattenedBVH::FlattenedNode> vector_nodes;
+//            for (FlattenedBVH::FlattenedNode& node : nodes_deque)
+//                vector_nodes.push_back(node);
+
+//            return vector_nodes;
         }
 
         //If this node has been subdivided (and thus cannot accept any triangles),
         //this boolean will be set to false
         bool _is_leaf = true;
 
-        std::vector<Triangle*> _triangles;
-        BVH::OctreeNode* _children[8];
+        int debug_index = -1;//TODO remove
+
+        std::vector<int> _triangles;
+        std::array<BVH::OctreeNode*, 8> _children;
 
         Point _min, _max;
         BVH::BoundingVolume _bounding_volume;

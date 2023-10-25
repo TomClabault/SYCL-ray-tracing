@@ -9,11 +9,11 @@
 #include "triangle.h"
 #include "xorshift.h"
 
-#define RENDER_KERNEL_ITERATIONS 2
-#define SAMPLES_PER_KERNEL 128
+#define RENDER_KERNEL_ITERATIONS 4
+#define SAMPLES_PER_KERNEL 256
 #define MAX_BOUNCES 5
 
-#define TILE_SIZE_X 8
+#define TILE_SIZE_X 2
 #define TILE_SIZE_Y TILE_SIZE_X
 
 struct LightSourceInformation

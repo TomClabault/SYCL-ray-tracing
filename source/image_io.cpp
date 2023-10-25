@@ -9,12 +9,10 @@
 #define STB_IMAGE_WRITE_IMPLEMENTATION
 #include "stb_image_write.h"
 
-
 Color gamma( const Color& color, const float g )
 {
     return Color(std::pow(color.r, g), std::pow(color.g, g), std::pow(color.b, g), color.a);
 }
-
 
 Image gamma( const Image& image, const float g= float(2.2) )
 {

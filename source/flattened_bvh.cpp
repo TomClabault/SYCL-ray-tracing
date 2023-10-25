@@ -2,10 +2,9 @@
 
 #include "bvh.h"
 
-bool FlattenedBVH::FlattenedNode::intersect(float denoms[], float numers[]) const
+bool FlattenedBVH::FlattenedNode::intersect_volume(const std::array<float, BVHConstants::PLANES_COUNT>& denoms, const std::array<float, BVHConstants::PLANES_COUNT>& numers) const
 {
-    //TODO
-    //return BVH::BoundingVolume::intersect(d_near, d_far, denoms, numers);
+    return BVH::BoundingVolume::intersect(d_near, d_far, denoms, numers);
 }
 
 bool FlattenedBVH::intersect(const Ray& ray, HitInfo& hit_info, const std::vector<Triangle>& triangles) const
@@ -15,8 +14,8 @@ bool FlattenedBVH::intersect(const Ray& ray, HitInfo& hit_info, const std::vecto
     FlattenedBVH::Stack stack;
     stack.push(0);//Pushing the root of the BVH
 
-    float denoms[BVHConstants::PLANES_COUNT];
-    float numers[BVHConstants::PLANES_COUNT];
+    std::array<float, BVHConstants::PLANES_COUNT> denoms;
+    std::array<float, BVHConstants::PLANES_COUNT> numers;
 
     for (int i = 0; i < BVHConstants::PLANES_COUNT; i++)
     {
@@ -24,16 +23,16 @@ bool FlattenedBVH::intersect(const Ray& ray, HitInfo& hit_info, const std::vecto
         numers[i] = dot(BVH::BoundingVolume::PLANE_NORMALS[i], Vector(ray.origin));
     }
 
+    float closest_intersection_distance = -1;
     while (!stack.empty())
     {
         int node_index = stack.pop();
         const FlattenedNode& node = m_nodes[node_index];
 
-        if (node.intersect(denoms, numers))
+        if (node.intersect_volume(denoms, numers))
         {
             if (node.is_leaf)
             {
-                float closest_intersection_distance = std::numeric_limits<float>::max();
                 for (int i = 0; i < node.nb_triangles; i++)
                 {
                     int triangle_index = node.triangles_indices[i];
@@ -41,7 +40,7 @@ bool FlattenedBVH::intersect(const Ray& ray, HitInfo& hit_info, const std::vecto
                     HitInfo local_hit_info;
                     if (triangles[triangle_index].intersect(ray, local_hit_info))
                     {
-                        if (closest_intersection_distance > local_hit_info.t)
+                        if (closest_intersection_distance > local_hit_info.t || closest_intersection_distance == -1)
                         {
                             closest_intersection_distance = local_hit_info.t;
                             hit_info = local_hit_info;

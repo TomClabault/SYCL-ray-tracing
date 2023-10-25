@@ -5,6 +5,8 @@
 #include "bvh.h"
 #include "flattened_bvh.h"
 
+int globa_index;//TODO remove
+
 Vector BVH::BoundingVolume::PLANE_NORMALS[BVHConstants::PLANES_COUNT] = {
 	Vector(1, 0, 0),
 	Vector(0, 1, 0),
@@ -53,15 +55,15 @@ void BVH::build_bvh(int max_depth, int leaf_max_obj_count, Point min, Point max,
 {
 	_root = new OctreeNode(min, max);
 
-	for (Triangle& triangle : *_triangles)
-		_root->insert(&triangle, 0, max_depth, leaf_max_obj_count);
+    for (int triangle_id = 0; triangle_id < _triangles->size(); triangle_id++)
+        _root->insert(*_triangles, triangle_id, 0, max_depth, leaf_max_obj_count);
 
-	_root->compute_volume();
+    _root->compute_volume(*_triangles);
 }
 
 bool BVH::intersect(const Ray& ray, HitInfo& hit_info) const
 {
-    return _root->intersect(ray, hit_info);
+    return _root->intersect(*_triangles, ray, hit_info);
 }
 
 FlattenedBVH BVH::flatten() const
@@ -69,9 +71,7 @@ FlattenedBVH BVH::flatten() const
     FlattenedBVH flattened;
 
     int current_node_index = 0;
-    std::vector<FlattenedBVH::FlattenedNode> nodes = flattened.get_nodes();
-    std::vector<FlattenedBVH::FlattenedNode> flattened_nodes = _root->flatten(&current_node_index);
-    nodes.insert(nodes.begin(), flattened_nodes.begin(), flattened_nodes.end());
+    flattened.get_nodes() =_root->flatten(&current_node_index);
 
     return flattened;
 }
