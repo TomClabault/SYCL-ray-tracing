@@ -5,6 +5,7 @@
 
 #include <rapidobj/rapidobj.hpp>
 
+#include "bvh.h"
 #include "camera.h"
 #include "image_io.h"
 #include "render_kernel.h"
@@ -71,8 +72,8 @@ int main(int argc, char* argv[])
 
     Image image(width, height);
 
-    rapidobj::Result parsed_obj = rapidobj::ParseFile("../SYCL-ray-tracing/data/cornell.obj", rapidobj::MaterialLibrary::Default());
-    //rapidobj::Result parsed_obj = rapidobj::ParseFile("../SYCL-ray-tracing/data/test_triangle_area_sampling.obj", rapidobj::MaterialLibrary::Default());
+    //rapidobj::Result parsed_obj = rapidobj::ParseFile("../SYCL-ray-tracing/data/cornell.obj", rapidobj::MaterialLibrary::Default());
+    rapidobj::Result parsed_obj = rapidobj::ParseFile("../SYCL-ray-tracing/data/test_triangle_area_sampling.obj", rapidobj::MaterialLibrary::Default());
     if (parsed_obj.error)
     {
         std::cout << "There was an error loading the OBJ file: " << parsed_obj.error.code.message() << std::endl;
@@ -121,11 +122,16 @@ int main(int argc, char* argv[])
     for (const rapidobj::Material& material : parsed_obj.materials)
         materials_host_buffer.push_back(SimpleMaterial {Color(material.emission), Color(material.diffuse)});
 
+    BVH bvh(&triangle_host_buffer);
+    FlattenedBVH flat_bvh = bvh.flatten();
+
     sycl::buffer<Color> image_buffer(image.color_data(), image.width() * image.height());
     sycl::buffer<Triangle> triangle_buffer(triangle_host_buffer.data(), triangle_host_buffer.size());
     sycl::buffer<SimpleMaterial> materials_buffer(materials_host_buffer.data(), materials_host_buffer.size());
     sycl::buffer<int> emissive_triangle_indices_buffer(emissive_triangle_indices_host_buffer.data(), emissive_triangle_indices_host_buffer.size());
     sycl::buffer<int> materials_indices_buffer(materials_indices_host_buffer.data(), materials_indices_host_buffer.size());
+    sycl::buffer<FlattenedBVH::FlattenedNode> bvh_nodes_buffer(flat_bvh.get_nodes().data(), flat_bvh.get_nodes().size());
+    sycl::buffer<Vector> bvh_plane_normals_buffer(BVH::BoundingVolume::PLANE_NORMALS, BVHConstants::PLANES_COUNT);
 
     std::cout << "[" << width << "x" << height << "]: " << RENDER_KERNEL_ITERATIONS * SAMPLES_PER_KERNEL << " samples" << std::endl << std::endl;
 
@@ -133,11 +139,13 @@ int main(int argc, char* argv[])
     for (int i = 0; i < RENDER_KERNEL_ITERATIONS; i++)
     {
         queue.submit([&] (sycl::handler& handler) {
-            auto image_buffer_access = image_buffer.get_access<sycl::access::mode::write, sycl::access::target::device>(handler);
+            auto image_buffer_access = image_buffer.get_access<sycl::access::mode::write>(handler);
             auto triangle_buffer_access = triangle_buffer.get_access<sycl::access::mode::read>(handler);
             auto materials_buffer_access = materials_buffer.get_access<sycl::access::mode::read>(handler);
             auto emissive_triangle_indices_buffer_access = emissive_triangle_indices_buffer.get_access<sycl::access::mode::read>(handler);
             auto materials_indices_buffer_access = materials_indices_buffer.get_access<sycl::access::mode::read>(handler);
+            auto bvh_nodes_access = bvh_nodes_buffer.get_access<sycl::access::mode::read>(handler);
+            auto bvh_plane_normals = bvh_plane_normals_buffer.get_access<sycl::access::mode::read, sycl::access::target::constant_buffer>(handler);
 
             const auto global_range = sycl::range<2>(width, height);
             const auto local_range = sycl::range<2>(TILE_SIZE_X, TILE_SIZE_Y);
@@ -151,8 +159,10 @@ int main(int argc, char* argv[])
                                               materials_buffer_access,
                                               emissive_triangle_indices_buffer_access,
                                               materials_indices_buffer_access,
+                                              bvh_nodes_access,
                                               debug_out_stream);
             render_kernel.set_camera(Camera(45, Translation(0, 1, 3.5)));
+            render_kernel.set_bvh_plane_normals(bvh_plane_normals);
 
             handler.parallel_for(coordinates_indices, render_kernel);
         }).wait();

@@ -7,7 +7,7 @@
 
 int globa_index;//TODO remove
 
-Vector BVH::BoundingVolume::PLANE_NORMALS[BVHConstants::PLANES_COUNT] = {
+const Vector BVH::BoundingVolume::PLANE_NORMALS[BVHConstants::PLANES_COUNT] = {
 	Vector(1, 0, 0),
 	Vector(0, 1, 0),
     Vector(0, 0, 1),

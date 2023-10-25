@@ -102,7 +102,7 @@ void RenderKernel::ray_trace_pixel(int x, int y) const
             if (next_ray_state == BOUNCE)
             {
                 HitInfo closest_hit_info;
-                bool intersection_found = intersect_scene(ray, closest_hit_info);
+                bool intersection_found = intersect_scene_bvh(ray, closest_hit_info);
 
                 if (intersection_found)
                 {
@@ -257,6 +257,57 @@ bool RenderKernel::intersect_scene(Ray& ray, HitInfo& closest_hit_info) const
     return intersection_found;
 }
 
+bool RenderKernel::intersect_scene_bvh(Ray& ray, HitInfo& closest_hit_info) const
+{
+    closest_hit_info.t = -1;
+
+    FlattenedBVH::Stack stack;
+    stack.push(0);//Pushing the root of the BVH
+
+    sycl::marray<float, BVHConstants::PLANES_COUNT> denoms;
+    sycl::marray<float, BVHConstants::PLANES_COUNT> numers;
+
+    for (int i = 0; i < BVHConstants::PLANES_COUNT; i++)
+    {
+        denoms[i] = dot(BVH_PLANE_NORMALS[i], ray.direction);
+        numers[i] = dot(BVH_PLANE_NORMALS[i], Vector(ray.origin));
+    }
+
+    float closest_intersection_distance = -1;
+    while (!stack.empty())
+    {
+        int node_index = stack.pop();
+        const FlattenedBVH::FlattenedNode& node = m_bvh_nodes[node_index];
+
+        if (node.intersect_volume(denoms, numers))
+        {
+            if (node.is_leaf)
+            {
+                for (int i = 0; i < node.nb_triangles; i++)
+                {
+                    int triangle_index = node.triangles_indices[i];
+
+                    HitInfo local_hit_info;
+                    if (m_triangle_buffer_access[triangle_index].intersect(ray, local_hit_info))
+                    {
+                        if (closest_intersection_distance > local_hit_info.t || closest_intersection_distance == -1)
+                        {
+                            closest_intersection_distance = local_hit_info.t;
+                            closest_hit_info = local_hit_info;
+                            closest_hit_info.triangle_index = triangle_index;
+                        }
+                    }
+                }
+            }
+            else
+                for (int i = 0; i < 8; i++)
+                    stack.push(node.children[i]);
+        }
+    }
+
+    return closest_hit_info.t > -1;
+}
+
 Point RenderKernel::sample_random_point_on_lights(xorshift32_generator& random_number_generator, float& pdf, LightSourceInformation& light_info) const
 {
     light_info.emissive_triangle_index = random_number_generator() * m_emissive_triangle_indices_buffer.size();
@@ -289,7 +340,7 @@ Point RenderKernel::sample_random_point_on_lights(xorshift32_generator& random_n
 bool RenderKernel::evaluate_shadow_ray(Ray& ray, float t_max) const
 {
     HitInfo hit_info;
-    intersect_scene(ray, hit_info);
+    intersect_scene_bvh(ray, hit_info);
     if (hit_info.t + 1.0e-4f < t_max)
         //There is something in between the light and the origin of the ray
         return true;

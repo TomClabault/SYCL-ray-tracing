@@ -7,6 +7,11 @@ bool FlattenedBVH::FlattenedNode::intersect_volume(const std::array<float, BVHCo
     return BVH::BoundingVolume::intersect(d_near, d_far, denoms, numers);
 }
 
+bool FlattenedBVH::FlattenedNode::intersect_volume(const sycl::marray<float, BVHConstants::PLANES_COUNT>& denoms, const sycl::marray<float, BVHConstants::PLANES_COUNT>& numers) const
+{
+    return BVH::BoundingVolume::intersect(d_near, d_far, denoms, numers);
+}
+
 bool FlattenedBVH::intersect(const Ray& ray, HitInfo& hit_info, const std::vector<Triangle>& triangles) const
 {
     hit_info.t = -1;

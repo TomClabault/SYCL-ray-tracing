@@ -21,7 +21,7 @@ class BVH
 public:
     struct BoundingVolume
     {
-        static Vector PLANE_NORMALS[BVHConstants::PLANES_COUNT];
+        static const Vector PLANE_NORMALS[BVHConstants::PLANES_COUNT];
 
         std::array<float, BVHConstants::PLANES_COUNT> _d_near;
         std::array<float, BVHConstants::PLANES_COUNT> _d_far;
@@ -82,6 +82,36 @@ public:
                               const std::array<float, BVHConstants::PLANES_COUNT>& d_far,
                               const std::array<float, BVHConstants::PLANES_COUNT>& denoms,
                               const std::array<float, BVHConstants::PLANES_COUNT>& numers)
+        {
+            float t_near = -INFINITY;
+            float t_far = INFINITY;
+
+            for (int i = 0; i < BVHConstants::PLANES_COUNT; i++)
+            {
+                float denom = denoms[i];
+                if (denom == 0.0)
+                    continue;
+
+                //inverse denom to avoid division
+                float d_near_i = (d_near[i] - numers[i]) / denom;
+                float d_far_i = (d_far[i] - numers[i]) / denom;
+                if (denom < 0)
+                    std::swap(d_near_i, d_far_i);
+
+                t_near = std::max(t_near, d_near_i);
+                t_far = std::min(t_far, d_far_i);
+
+                if (t_far < t_near)
+                    return false;
+            }
+
+            return true;
+        }
+
+        static bool intersect(const std::array<float, BVHConstants::PLANES_COUNT>& d_near,
+                              const std::array<float, BVHConstants::PLANES_COUNT>& d_far,
+                              const sycl::marray<float, BVHConstants::PLANES_COUNT>& denoms,
+                              const sycl::marray<float, BVHConstants::PLANES_COUNT>& numers)
         {
             float t_near = -INFINITY;
             float t_far = INFINITY;
