@@ -106,7 +106,12 @@ void RenderKernel::ray_trace_pixel(int x, int y) const
 
                 if (intersection_found)
                 {
-                    // Direct lighting
+                    int material_index = m_materials_indices_buffer[closest_hit_info.triangle_index];
+                    SimpleMaterial material = m_materials_buffer_access[material_index];
+
+                    // ------------------------------------- //
+                    // ---------- Direct lighting ---------- //
+                    // ------------------------------------- //
                     float light_sample_pdf;
                     LightSourceInformation light_source_info;
                     Point random_light_point = sample_random_point_on_lights(random_number_generator, light_sample_pdf, light_source_info);
@@ -133,22 +138,22 @@ void RenderKernel::ray_trace_pixel(int x, int y) const
                         radiance /= distance_to_light * distance_to_light;
                         //PDF: Probability of having chosen this point on this exact light source
                         radiance /= light_sample_pdf;
+                        //BRDF of the illuminated surface
+                        radiance *= microfacet_brdf(material, shadow_ray.direction, -ray.direction, closest_hit_info.normal_at_inter);
                     }
 
                     float random_bounce_direction_pdf;
-                    Vector random_dir = uniform_direction_around_normal(closest_hit_info.normal_at_inter, random_bounce_direction_pdf, random_number_generator);
+                    Vector random_bounce_direction = uniform_direction_around_normal(closest_hit_info.normal_at_inter, random_bounce_direction_pdf, random_number_generator);
                     Point new_ray_origin = closest_hit_info.inter_point + closest_hit_info.normal_at_inter * 1.0e-4f;
 
 
 
+                    // --------------------------------------- //
+                    // ---------- Indirect lighting ---------- //
+                    // --------------------------------------- //
 
-                    //Indirect lighting
-                    int material_index = m_materials_indices_buffer[closest_hit_info.triangle_index];
-                    SimpleMaterial material = m_materials_buffer_access[material_index];
-
-                    //We're using the shadow_ray direction here because we're going to accumulate the direct lighting
-                    Color brdf = microfacet_brdf(material, shadow_ray.direction, -ray.direction, closest_hit_info.normal_at_inter);
-                    throughput *= brdf * sycl::max(0.0f, dot(random_dir, closest_hit_info.normal_at_inter));
+                    Color brdf = microfacet_brdf(material, random_bounce_direction, -ray.direction, closest_hit_info.normal_at_inter);
+                    throughput *= brdf * sycl::max(0.0f, dot(random_bounce_direction, closest_hit_info.normal_at_inter));
 
                     if (bounce == 0)
                         sample_color += material.emission;
@@ -156,7 +161,7 @@ void RenderKernel::ray_trace_pixel(int x, int y) const
 
                     throughput /= random_bounce_direction_pdf;
 
-                    ray = Ray(new_ray_origin, normalize(random_dir));
+                    ray = Ray(new_ray_origin, normalize(random_bounce_direction));
                     next_ray_state = RayState::BOUNCE;
                 }
                 else
@@ -250,8 +255,8 @@ Color RenderKernel::microfacet_brdf(const SimpleMaterial& material, const Vector
 
     if (NoV > 0.0f && NoL > 0.0f && NoH > 0.0f)
     {
-        float metalness = 0.5f;//texture2D(u_mesh_specular_texture, vs_texcoords).b;
-        float roughness = 0.5f;//texture2D(u_mesh_specular_texture, vs_texcoords).g;
+        float metalness = 0.0f;//texture2D(u_mesh_specular_texture, vs_texcoords).b;
+        float roughness = 0.1f;//texture2D(u_mesh_specular_texture, vs_texcoords).g;
 
         float alpha = roughness * roughness;
 
