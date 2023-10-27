@@ -27,6 +27,7 @@ add_executable(SYCL_RayTracing
     source/tests.cpp
     source/triangle.cpp
     source/triangle.cpp
+    source/utils.cpp
     source/vec.cpp
 
     include/bvh.h
@@ -37,11 +38,13 @@ add_executable(SYCL_RayTracing
     include/image.h
     include/image_io.h
     include/mat.h
+    include/parsed_obj.h
     include/ray.h
     include/render_kernel.h
     include/simple_material.h
     include/tests.h
     include/triangle.h
+    include/utils.h
     include/vec.h
     include/xorshift.h
 

@@ -5,6 +5,8 @@
 
 #include <rapidobj/rapidobj.hpp>
 
+#include <stb_image_write.h>
+
 #include "bvh.h"
 #include "camera.h"
 #include "image_io.h"
@@ -12,6 +14,7 @@
 #include "simple_material.h"
 #include "tests.h"
 #include "triangle.h"
+#include "utils.h"
 
 #include "xorshift.h"
 
@@ -42,7 +45,6 @@ int main(int argc, char* argv[])
 
     xorshift32_generator generator(58);
 
-
     for (int j = 0; j<  1000000; j++)
     {
         float random = generator();
@@ -62,8 +64,6 @@ int main(int argc, char* argv[])
         */
     }
 
-    //return 0;
-
     const int width = 1280;
     const int height = 720;
 
@@ -72,71 +72,30 @@ int main(int argc, char* argv[])
 
     Image image(width, height);
 
-    //rapidobj::Result parsed_obj = rapidobj::ParseFile("../SYCL-ray-tracing/data/cornell.obj", rapidobj::MaterialLibrary::Default());
-    rapidobj::Result parsed_obj = rapidobj::ParseFile("../SYCL-ray-tracing/data/test_triangle_area_sampling.obj", rapidobj::MaterialLibrary::Default());
-    if (parsed_obj.error)
-    {
-        std::cout << "There was an error loading the OBJ file: " << parsed_obj.error.code.message() << std::endl;
+    ParsedOBJ parsed_obj = Utils::parse_obj("../SYCL-ray-tracing/data/OBJs/cornell.obj");
 
-        return -1;
-    }
-    rapidobj::Triangulate(parsed_obj);
-
-    const rapidobj::Array<float>& positions = parsed_obj.attributes.positions;
-    std::vector<Triangle> triangle_host_buffer;
-    std::vector<int> emissive_triangle_indices_host_buffer;
-    std::vector<int> materials_indices_host_buffer;
-    for (rapidobj::Shape& shape : parsed_obj.shapes)
-    {
-        rapidobj::Mesh& mesh = shape.mesh;
-        for (int i = 0; i < mesh.indices.size(); i += 3)
-        {
-            int index_0 = mesh.indices[i + 0].position_index;
-            int index_1 = mesh.indices[i + 1].position_index;
-            int index_2 = mesh.indices[i + 2].position_index;
-
-            Point A = Point(positions[index_0 * 3 + 0], positions[index_0 * 3 + 1], positions[index_0 * 3 + 2]);
-            Point B = Point(positions[index_1 * 3 + 0], positions[index_1 * 3 + 1], positions[index_1 * 3 + 2]);
-            Point C = Point(positions[index_2 * 3 + 0], positions[index_2 * 3 + 1], positions[index_2 * 3 + 2]);
-
-            Triangle triangle(A, B, C);
-            triangle_host_buffer.push_back(triangle);
-
-            int mesh_triangle_index = i / 3;
-            int triangle_material_index = mesh.material_ids[mesh_triangle_index];
-            materials_indices_host_buffer.push_back(triangle_material_index);
-
-            rapidobj::Float3 emission = parsed_obj.materials[triangle_material_index].emission;
-            if (emission[0] > 0 || emission[1] > 0 || emission[2] > 0)
-            {
-                //This is an emissive triangle
-                //Using the buffer of all the triangles to get the global id of the emissive
-                //triangle
-                emissive_triangle_indices_host_buffer.push_back(triangle_host_buffer.size() - 1);
-            }
-        }
-    }
-
-    //Computing SimpleMaterials
-    std::vector<SimpleMaterial> materials_host_buffer;
-    for (const rapidobj::Material& material : parsed_obj.materials)
-        materials_host_buffer.push_back(SimpleMaterial {Color(material.emission), Color(material.diffuse)});
-
-    BVH bvh(&triangle_host_buffer);
+    BVH bvh(&parsed_obj.triangles);
     FlattenedBVH flat_bvh = bvh.flatten();
 
     sycl::buffer<Color> image_buffer(image.color_data(), image.width() * image.height());
-    sycl::buffer<Triangle> triangle_buffer(triangle_host_buffer.data(), triangle_host_buffer.size());
-    sycl::buffer<SimpleMaterial> materials_buffer(materials_host_buffer.data(), materials_host_buffer.size());
-    sycl::buffer<int> emissive_triangle_indices_buffer(emissive_triangle_indices_host_buffer.data(), emissive_triangle_indices_host_buffer.size());
-    sycl::buffer<int> materials_indices_buffer(materials_indices_host_buffer.data(), materials_indices_host_buffer.size());
+    sycl::buffer<Triangle> triangle_buffer(parsed_obj.triangles.data(), parsed_obj.triangles.size());
+    sycl::buffer<SimpleMaterial> materials_buffer(parsed_obj.materials.data(), parsed_obj.materials.size());
+    sycl::buffer<int> emissive_triangle_indices_buffer(parsed_obj.emissive_triangle_indices.data(), parsed_obj.emissive_triangle_indices.size());
+    sycl::buffer<int> materials_indices_buffer(parsed_obj.material_indices.data(), parsed_obj.material_indices.size());
     sycl::buffer<FlattenedBVH::FlattenedNode> bvh_nodes_buffer(flat_bvh.get_nodes().data(), flat_bvh.get_nodes().size());
     sycl::buffer<Vector> bvh_plane_normals_buffer(BVH::BoundingVolume::PLANE_NORMALS, BVHConstants::PLANES_COUNT);
+
+    int skysphere_width, skysphere_height;
+    std::vector<sycl::float4> skysphere_data = Utils::read_image_float("../SYCL-ray-tracing/data/Skyspheres/evening_road_01_puresky_2k.hdr", skysphere_width, skysphere_height);
+    sycl::image<2> skysphere_hdr(skysphere_data.data(),
+                                 sycl::image_channel_order::rgba,
+                                 sycl::image_channel_type::fp32,
+                                 sycl::range<2>(skysphere_height, skysphere_width));
 
     std::cout << "[" << width << "x" << height << "]: " << RENDER_KERNEL_ITERATIONS * SAMPLES_PER_KERNEL << " samples" << std::endl << std::endl;
 
     auto start = std::chrono::high_resolution_clock::now();
-    for (int i = 0; i < RENDER_KERNEL_ITERATIONS; i++)
+    for (int kernel_iteration = 0; kernel_iteration < RENDER_KERNEL_ITERATIONS; kernel_iteration++)
     {
         queue.submit([&] (sycl::handler& handler) {
             auto image_buffer_access = image_buffer.get_access<sycl::access::mode::write>(handler);
@@ -146,6 +105,8 @@ int main(int argc, char* argv[])
             auto materials_indices_buffer_access = materials_indices_buffer.get_access<sycl::access::mode::read>(handler);
             auto bvh_nodes_access = bvh_nodes_buffer.get_access<sycl::access::mode::read>(handler);
             auto bvh_plane_normals = bvh_plane_normals_buffer.get_access<sycl::access::mode::read, sycl::access::target::constant_buffer>(handler);
+            auto skysphere_accessor = sycl::accessor<sycl::float4, 2, sycl::access::mode::read, sycl::access::target::image>(skysphere_hdr, handler);
+            sycl::sampler skysphere_sampler(sycl::coordinate_normalization_mode::unnormalized, sycl::addressing_mode::clamp, sycl::filtering_mode::linear);
 
             const auto global_range = sycl::range<2>(width, height);
             const auto local_range = sycl::range<2>(TILE_SIZE_X, TILE_SIZE_Y);
@@ -153,13 +114,15 @@ int main(int argc, char* argv[])
 
             sycl::stream debug_out_stream(65536, 256, handler);
 
-            auto render_kernel = RenderKernel(width, height, i,
+            auto render_kernel = RenderKernel(width, height, kernel_iteration,
                                               image_buffer_access,
                                               triangle_buffer_access,
                                               materials_buffer_access,
                                               emissive_triangle_indices_buffer_access,
                                               materials_indices_buffer_access,
                                               bvh_nodes_access,
+                                              skysphere_accessor,
+                                              skysphere_sampler,
                                               debug_out_stream);
             render_kernel.set_camera(Camera(45, Translation(0, 1, 3.5)));
             render_kernel.set_bvh_plane_normals(bvh_plane_normals);
@@ -167,7 +130,7 @@ int main(int argc, char* argv[])
             handler.parallel_for(coordinates_indices, render_kernel);
         }).wait();
 
-        std::cout << (float)(i + 1) / RENDER_KERNEL_ITERATIONS * 100.0f << "%" << std::endl;
+        std::cout << (float)(kernel_iteration + 1) / RENDER_KERNEL_ITERATIONS * 100.0f << "%" << std::endl;
     }
 
     queue.wait();

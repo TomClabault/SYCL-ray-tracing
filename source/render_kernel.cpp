@@ -102,33 +102,14 @@ void RenderKernel::ray_trace_pixel(int x, int y) const
             if (next_ray_state == BOUNCE)
             {
                 HitInfo closest_hit_info;
-                bool intersection_found = intersect_scene_bvh(ray, closest_hit_info);
+                bool intersection_found = intersect_scene(ray, closest_hit_info);
 
                 if (intersection_found)
                 {
-//                    if (x > m_width / 2 - 10 && x < m_width / 2 + 10 && y < m_height / 2 + 10 && y > m_height / 2 - 10)
-//                    {
-//                        if (ray.origin.x > -3 && ray.origin.x < 3
-//                                && ray.origin.y > -3 && ray.origin.y < 3
-//                                && ray.origin.z > -3 && ray.origin.z < 3
-//                                && ray.direction.x > -3 && ray.direction.x < 3
-//                                && ray.direction.y > -3 && ray.direction.y < 3
-//                                && ray.direction.z > -3 && ray.direction.z < 3
-//                                && closest_hit_info.inter_point.x > -3 && closest_hit_info.inter_point.x < 3
-//                                && closest_hit_info.inter_point.y > -3 && closest_hit_info.inter_point.y < 3
-//                                && closest_hit_info.inter_point.z > -3 && closest_hit_info.inter_point.z < 3
-//                                && sycl::abs(closest_hit_info.inter_point.x) > 0.001f
-//                                && sycl::abs(closest_hit_info.inter_point.y) > 0.001f
-//                                && sycl::abs(closest_hit_info.inter_point.z) > 0.001f)
-//                            m_out_stream  << sycl::setprecision(6) << "inter: " << ray.origin << ", " << ray.direction << ".." << "inter point: " << closest_hit_info.inter_point << ".]" << sycl::endl;
-//                    }
-
-
-
                     // Direct lighting
-                    float pdf;
+                    float light_sample_pdf;
                     LightSourceInformation light_source_info;
-                    Point random_light_point = sample_random_point_on_lights(random_number_generator, pdf, light_source_info);
+                    Point random_light_point = sample_random_point_on_lights(random_number_generator, light_sample_pdf, light_source_info);
                     Point shadow_ray_origin = closest_hit_info.inter_point + closest_hit_info.normal_at_inter * 1.0e-4f;
                     Vector shadow_ray_direction = random_light_point - shadow_ray_origin;
                     float distance_to_light = length(shadow_ray_direction);
@@ -151,55 +132,48 @@ void RenderKernel::ray_trace_pixel(int x, int y) const
                         //Falloff of the light intensity with the distance squared
                         radiance /= distance_to_light * distance_to_light;
                         //PDF: Probability of having chosen this point on this exact light source
-                        radiance /= pdf;
-                        //BRDF of the illuminated surface
-                        radiance /= M_PI;
+                        radiance /= light_sample_pdf;
                     }
 
-                    float random_direction_pdf;
-                    Vector random_dir = uniform_direction_around_normal(closest_hit_info.normal_at_inter, random_direction_pdf, random_number_generator);
+                    float random_bounce_direction_pdf;
+                    Vector random_dir = uniform_direction_around_normal(closest_hit_info.normal_at_inter, random_bounce_direction_pdf, random_number_generator);
                     Point new_ray_origin = closest_hit_info.inter_point + closest_hit_info.normal_at_inter * 1.0e-4f;
-
 
 
 
 
                     //Indirect lighting
                     int material_index = m_materials_indices_buffer[closest_hit_info.triangle_index];
-                    SimpleMaterial mat = m_materials_buffer_access[material_index];
+                    SimpleMaterial material = m_materials_buffer_access[material_index];
 
-                    Color brdf = mat.diffuse / M_PI;
+                    //We're using the shadow_ray direction here because we're going to accumulate the direct lighting
+                    Color brdf = microfacet_brdf(material, shadow_ray.direction, -ray.direction, closest_hit_info.normal_at_inter);
                     throughput *= brdf * sycl::max(0.0f, dot(random_dir, closest_hit_info.normal_at_inter));
-                    if (bounce == 0)
-                        sample_color += mat.emission;
 
-//                    return [(radiance + [(radiance + indirect() / random_direction_pdf) * throughput] / random_direction_pdf) * throughput];
+                    if (bounce == 0)
+                        sample_color += material.emission;
                     sample_color += radiance * throughput;
 
-                    throughput /= random_direction_pdf;
+                    throughput /= random_bounce_direction_pdf;
 
                     ray = Ray(new_ray_origin, normalize(random_dir));
                     next_ray_state = RayState::BOUNCE;
                 }
                 else
-                {
-//                    if (x > m_width / 2 - 10 && x < m_width / 2 + 10 && y < m_height / 2 + 10 && y > m_height / 2 - 10)
-//                    {
-//                        if (ray.origin.x > -3 && ray.origin.x < 3
-//                                && ray.origin.y > -3 && ray.origin.y < 3
-//                                && ray.origin.z > -3 && ray.origin.z < 3
-//                                && ray.direction.x > -3 && ray.direction.x < 3
-//                                && ray.direction.y > -3 && ray.direction.y < 3
-//                                && ray.direction.z > -3 && ray.direction.z < 3)
-//                            m_out_stream << sycl::setprecision(6) << "no inter: " << ray.origin << ", " << ray.direction << "." << sycl::endl;
-//                    }
-
                     next_ray_state = RayState::MISSED;
-                }
             }
             else if (next_ray_state == MISSED)
             {
-                //Handle skysphere here
+                float u, v;
+                u = 0.5f + sycl::atan2(ray.direction.z, ray.direction.x) / (2.0f * (float)M_PI);
+                v = 0.5f + sycl::asin(ray.direction.y) / (float)M_PI;
+
+                sycl::int2 coords(v * m_skysphere_height, u * m_skysphere_width);
+                sycl::float4 skysphere_color_float4 = m_skysphere.read(coords, m_skysphere_sampler);
+                Color skysphere_color = Color(skysphere_color_float4.x(), skysphere_color_float4.y(), skysphere_color_float4.z());
+
+                sample_color += skysphere_color * throughput;
+
                 break;
             }
             else if (next_ray_state == TERMINATED)
@@ -229,6 +203,80 @@ void RenderKernel::ray_trace_pixel(int x, int y) const
 
         m_frame_buffer_access[y * m_width + x] = gamma_corrected;
     }
+}
+
+Color RenderKernel::lambertian_brdf(const SimpleMaterial& material, const Vector& to_light_direction, const Vector& view_direction, const Vector& surface_normal) const
+{
+    return material.diffuse / M_PI;
+}
+
+Color fresnel_schlick(Color F0, float NoV)
+{
+    return F0 + (Color(1.0f) - F0) * sycl::pow((1.0f - NoV), 5.0f);
+}
+
+float GGX_normal_distribution(float alpha, float NoH)
+{
+    float alpha2 = alpha * alpha;
+    float NoH2 = NoH * NoH;
+    float b = (NoH2 * (alpha2 - 1.0f) + 1.0f);
+    return alpha2 * (1.0f / M_PI) / (b * b);
+}
+
+float G1_schlick_ggx(float k, float dot_prod)
+{
+    return dot_prod / (dot_prod * (1.0f - k) + k);
+}
+
+float GGX_smith_masking_shadowing(float roughness_squared, float NoV, float NoL)
+{
+    float k = roughness_squared / 2.0f;
+
+    return G1_schlick_ggx(k, NoL) * G1_schlick_ggx(k, NoV);
+}
+
+Color RenderKernel::microfacet_brdf(const SimpleMaterial& material, const Vector& to_light_direction, const Vector& view_direction, const Vector& surface_normal) const
+{
+    Color brdf_color = Color(0.0f, 0.0f, 0.0f);
+    Color base_color = material.diffuse;
+
+    Vector surface_normal_normalized = normalize(surface_normal);
+    Vector halfway_vector = normalize(view_direction + to_light_direction);
+
+    float NoV = sycl::max(0.0f, dot(surface_normal_normalized, view_direction));
+    float NoL = sycl::max(0.0f, dot(surface_normal_normalized, to_light_direction));
+    float NoH = sycl::max(0.0f, dot(surface_normal_normalized, halfway_vector));
+    float VoH = sycl::max(0.0f, dot(halfway_vector, view_direction));
+
+    if (NoV > 0.0f && NoL > 0.0f && NoH > 0.0f)
+    {
+        float metalness = 0.5f;//texture2D(u_mesh_specular_texture, vs_texcoords).b;
+        float roughness = 0.5f;//texture2D(u_mesh_specular_texture, vs_texcoords).g;
+
+        float alpha = roughness * roughness;
+
+        ////////// Cook Torrance BRDF //////////
+        Color F;
+        float D, G;
+
+        //F0 = 0.04 for dielectrics, 1.0 for metals (approximation)
+        Color F0 = Color(0.04f * (1.0f - metalness)) + metalness * base_color;
+
+        //GGX Distribution function
+        F = fresnel_schlick(F0, VoH);
+        D = GGX_normal_distribution(alpha, NoH);
+        G = GGX_smith_masking_shadowing(alpha, NoV, NoL);
+
+        Color kD = Color(1.0f - metalness); //Metals do not have a diffuse part
+        kD *= Color(1.0f) - F;//Only the transmitted light is diffused
+
+        Color diffuse_part = kD * base_color / M_PI;
+        Color specular_part = (F * D * G) / (4.0f * NoV * NoL);
+
+        brdf_color = diffuse_part + specular_part;
+    }
+
+    return brdf_color;
 }
 
 bool RenderKernel::intersect_scene(Ray& ray, HitInfo& closest_hit_info) const
