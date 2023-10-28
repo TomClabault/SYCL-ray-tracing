@@ -35,7 +35,7 @@ Vector RenderKernel::uniform_direction_around_normal(const Vector& normal, float
     float rand_2 = random_number_generator();
 
     float phi = 2.0f * M_PI * rand_1;
-    float root = sycl::sqrt(1 - rand_2 * rand_2);
+    float root = sycl::sqrt(1.0f - rand_2 * rand_2);
 
     pdf = 1.0f / (2.0f * M_PI);
 
@@ -68,7 +68,7 @@ Ray RenderKernel::get_camera_ray(float x, float y) const
     float y_ndc_space = y / m_height * 2 - 1;
 
 
-    Point ray_origin_view_space(0, 0, 0);
+    Point ray_origin_view_space(0.0f, 0.0f, 0.0f);
     Point ray_origin = m_camera.view_matrix(ray_origin_view_space);
 
     Point ray_point_direction_ndc_space = Point(x_ndc_space, y_ndc_space, m_camera.fov_dist);
@@ -82,9 +82,6 @@ Ray RenderKernel::get_camera_ray(float x, float y) const
 
 void RenderKernel::ray_trace_pixel(int x, int y) const
 {
-//    if (x != m_width / 2 || y != m_height / 2)
-//        return;
-
     xorshift32_generator random_number_generator(x * y * SAMPLES_PER_KERNEL * (m_kernel_iteration + 1));
 
     Color final_color = Color(0.0f, 0.0f, 0.0f);
@@ -194,7 +191,7 @@ void RenderKernel::ray_trace_pixel(int x, int y) const
         //Last iteration, computing the average
         m_frame_buffer_access[y * m_width + x] /= RENDER_KERNEL_ITERATIONS;
 
-        const float gamma = 2.2;
+        const float gamma = 2.2f;
         const float exposure = 2.5f;
         Color hdrColor = m_frame_buffer_access[y * m_width + x];
 
@@ -209,7 +206,7 @@ void RenderKernel::ray_trace_pixel(int x, int y) const
 
 Color RenderKernel::lambertian_brdf(const SimpleMaterial& material, const Vector& to_light_direction, const Vector& view_direction, const Vector& surface_normal) const
 {
-    return material.diffuse / M_PI;
+    return material.diffuse / (float)M_PI;
 }
 
 Color fresnel_schlick(Color F0, float NoV)
@@ -222,7 +219,7 @@ float GGX_normal_distribution(float alpha, float NoH)
     float alpha2 = alpha * alpha;
     float NoH2 = NoH * NoH;
     float b = (NoH2 * (alpha2 - 1.0f) + 1.0f);
-    return alpha2 * (1.0f / M_PI) / (b * b);
+    return alpha2 * (1.0f / (float)M_PI) / (b * b);
 }
 
 float G1_schlick_ggx(float k, float dot_prod)
@@ -271,7 +268,7 @@ Color RenderKernel::cook_torrance_brdf(const SimpleMaterial& material, const Vec
         Color kD = Color(1.0f - metalness); //Metals do not have a diffuse part
         kD *= Color(1.0f) - F;//Only the transmitted light is diffused
 
-        Color diffuse_part = kD * base_color / M_PI;
+        Color diffuse_part = kD * base_color / (float)M_PI;
         Color specular_part = (F * D * G) / (4.0f * NoV * NoL);
 
         brdf_color = diffuse_part + specular_part;
@@ -289,21 +286,18 @@ Color RenderKernel::cook_torrance_brdf_importance_sample(const SimpleMaterial& m
     float rand1 = random_number_generator();
     float rand2 = random_number_generator();
 
-    float phi = 2.0f * M_PI * rand1;
-    float theta = sycl::acos((1 - rand2) / (rand2 * (alpha * alpha - 1) + 1));
+    float phi = 2.0f * (float)M_PI * rand1;
+    float theta = sycl::acos((1.0f - rand2) / (rand2 * (alpha * alpha - 1.0f) + 1.0f));
     float sin_theta = sycl::sin(theta);
 
     Vector microfacet_normal_local_space = Vector(sycl::cos(phi) * sin_theta, sycl::sin(phi) * sin_theta, sycl::cos(theta));
     Vector microfacet_normal = rotate_vector_around_normal(surface_normal, microfacet_normal_local_space);
-    //m_out_stream << "surface normal: " << surface_normal << sycl::endl;
-    //m_out_stream << "microfacet normal: " << microfacet_normal << sycl::endl;
     if (dot(microfacet_normal, surface_normal) < 0.0f)
         //The microfacet normal that we sampled was under the surface, it can happen
         return Color(0.0f, 0.0f, 0.0f);
     Vector to_light_direction = 2.0f * dot(microfacet_normal, view_direction) * microfacet_normal - view_direction;
     Vector halfway_vector = microfacet_normal;
     output_direction = to_light_direction;
-    //m_out_stream << "to light direction: " << to_light_direction << sycl::endl;
 
     Color brdf_color = Color(0.0f, 0.0f, 0.0f);
     Color base_color = material.diffuse;
@@ -332,7 +326,7 @@ Color RenderKernel::cook_torrance_brdf_importance_sample(const SimpleMaterial& m
         Color kD = Color(1.0f - metalness); //Metals do not have a diffuse part
         kD *= Color(1.0f) - F;//Only the transmitted light is diffused
 
-        Color diffuse_part = kD * base_color / M_PI;
+        Color diffuse_part = kD * base_color / (float)M_PI;
         Color specular_part = (F * D * G) / (4.0f * NoV * NoL);
 
         float pdf = D * NoH / (4.0f * VoH);
@@ -340,8 +334,6 @@ Color RenderKernel::cook_torrance_brdf_importance_sample(const SimpleMaterial& m
         brdf_color = diffuse_part + specular_part / pdf;
     }
 
-    //m_out_stream << brdf_color << sycl::endl;
-    //m_out_stream << "pdf: " << pdf << sycl::endl;
     return brdf_color;
 }
 
