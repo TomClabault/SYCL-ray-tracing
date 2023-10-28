@@ -71,6 +71,7 @@ std::vector<sycl::float4> Utils::read_image_float(const std::string& filepath, i
 
     if(!pixels)
     {
+        std::cout << "Error reading image " << filepath << std::endl;
         return std::vector<sycl::float4>();
     }
 
