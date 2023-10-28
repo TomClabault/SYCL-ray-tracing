@@ -6,7 +6,7 @@ void RenderKernel::operator()(const sycl::nd_item<2>& coordinates) const
 {
     int x = coordinates.get_global_id(0);
     int y = coordinates.get_global_id(1);
-
+    
     ray_trace_pixel(x, y);
 }
 
@@ -106,6 +106,9 @@ void RenderKernel::ray_trace_pixel(int x, int y) const
 
                 if (intersection_found)
                 {
+                    m_frame_buffer_access[y * m_width + x] = Color(1.0f, 0.0f, 0.0f);
+                    return;
+
                     int material_index = m_materials_indices_buffer[closest_hit_info.triangle_index];
                     SimpleMaterial material = m_materials_buffer_access[material_index];
 

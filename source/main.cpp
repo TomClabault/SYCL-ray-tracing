@@ -67,7 +67,7 @@ int main(int argc, char* argv[])
     const int width = 1280;
     const int height = 720;
 
-    sycl::queue queue {sycl::gpu_selector_v};
+    sycl::queue queue {sycl::cpu_selector_v};
     std::cout << "Using " << queue.get_device().get_info<sycl::info::device::name>() << std::endl;
 
     Image image(width, height);
@@ -106,7 +106,7 @@ int main(int argc, char* argv[])
                 auto emissive_triangle_indices_buffer_access = emissive_triangle_indices_buffer.get_access<sycl::access::mode::read>(handler);
                 auto materials_indices_buffer_access = materials_indices_buffer.get_access<sycl::access::mode::read>(handler);
                 auto bvh_nodes_access = bvh_nodes_buffer.get_access<sycl::access::mode::read>(handler);
-                auto bvh_plane_normals = bvh_plane_normals_buffer.get_access<sycl::access::mode::read, sycl::access::target::constant_buffer>(handler);
+                auto bvh_plane_normals = bvh_plane_normals_buffer.get_access<sycl::access::mode::read, sycl::access::target::device>(handler);
                 auto skysphere_accessor = sycl::accessor<sycl::float4, 2, sycl::access::mode::read, sycl::access::target::image>(skysphere_hdr, handler);
                 sycl::sampler skysphere_sampler(sycl::coordinate_normalization_mode::unnormalized, sycl::addressing_mode::clamp, sycl::filtering_mode::linear);
 
@@ -134,6 +134,7 @@ int main(int argc, char* argv[])
         }
         catch (sycl::exception e)
         {
+            //TODO chercher si y'a des fuites ou des trucs moisis avec valgrind
             std::cout << e.what() << std::endl;
             std::exit(-1);
         }
@@ -147,7 +148,6 @@ int main(int argc, char* argv[])
     std::cout << std::chrono::duration_cast<std::chrono::milliseconds>(stop - start).count() << "ms" << std::endl;
 
     image_buffer.get_access<sycl::access::mode::read>();
-
 
     write_image_png(image, "../TP_RT_output.png");
 

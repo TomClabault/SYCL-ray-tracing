@@ -404,49 +404,6 @@ public:
                 vector_nodes.push_back(node);
 
             return vector_nodes;
-
-//            std::deque<FlattenedBVH::FlattenedNode> nodes_deque;
-//            FlattenedBVH::FlattenedNode my_node;
-//            my_node.debug_index = debug_index;
-
-//            for (int i = 0; i < BVHConstants::PLANES_COUNT; i++)
-//            {
-//                my_node.d_far[i] = _bounding_volume._d_far[i];
-//                my_node.d_near[i] = _bounding_volume._d_near[i];
-//            }
-
-//            if (_is_leaf)
-//            {
-//                my_node.is_leaf = true;
-
-//                for (int i = 0; i < 8; i++)
-//                    my_node.children[i] = -1;
-
-//                my_node.nb_triangles = _triangles.size();
-//                for (int i = 0; i < _triangles.size(); i++)
-//                    my_node.triangles_indices[i] = _triangles[i];
-//            }
-//            else
-//            {
-//                my_node.is_leaf = false;
-
-//                for (int i = 0; i < 8; i++)
-//                {
-//                    (*current_node_index)++;
-//                    my_node.children[i] = *current_node_index;
-//                    std::vector<FlattenedBVH::FlattenedNode> child_nodes = _children[i]->flatten(current_node_index);
-
-//                    nodes_deque.insert(nodes_deque.begin(), child_nodes.begin(), child_nodes.end());
-//                }
-//            }
-
-//            nodes_deque.push_front(my_node);
-
-//            std::vector<FlattenedBVH::FlattenedNode> vector_nodes;
-//            for (FlattenedBVH::FlattenedNode& node : nodes_deque)
-//                vector_nodes.push_back(node);
-
-//            return vector_nodes;
         }
 
         //If this node has been subdivided (and thus cannot accept any triangles),
