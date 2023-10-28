@@ -10,8 +10,8 @@
 
 #include <sycl/sycl.hpp>
 
-#define RENDER_KERNEL_ITERATIONS 8
-#define SAMPLES_PER_KERNEL 64
+#define RENDER_KERNEL_ITERATIONS 1
+#define SAMPLES_PER_KERNEL 1
 #define MAX_BOUNCES 5
 
 #define TILE_SIZE_X 8
@@ -60,13 +60,15 @@ public:
     SYCL_EXTERNAL Ray get_camera_ray(float x, float y) const;
 
     Vector rotate_vector_around_normal(const Vector& normal, const Vector& random_dir_local_space) const;
-    Vector cosine_weighted_direction_around_normal(const Vector& normal, float& pdf, xorshift32_generator& random_number_generator) const;
     Vector uniform_direction_around_normal(const Vector& normal, float& pdf, xorshift32_generator& random_number_generator) const;
+    Vector cosine_weighted_direction_around_normal(const Vector& normal, float& pdf, xorshift32_generator& random_number_generator) const;
+    Vector GGX_importance_sample_direction(const Vector& normal, float& pdf, xorshift32_generator& random_number_generator) const;
 
     SYCL_EXTERNAL void ray_trace_pixel(int x, int y) const;
 
     SYCL_EXTERNAL Color lambertian_brdf(const SimpleMaterial& material, const Vector& to_light_direction, const Vector& view_direction, const Vector& surface_normal) const;
-    SYCL_EXTERNAL Color microfacet_brdf(const SimpleMaterial& material, const Vector& to_light_direction, const Vector& view_direction, const Vector& surface_normal) const;
+    SYCL_EXTERNAL Color cook_torrance_brdf(const SimpleMaterial& material, const Vector& to_light_direction, const Vector& view_direction, const Vector& surface_normal) const;
+    SYCL_EXTERNAL Color cook_torrance_brdf_importance_sample(const SimpleMaterial& material, const Vector& view_direction, const Vector& surface_normal, Vector& output_direction, float& pdf, xorshift32_generator& random_number_generator) const;
 
     SYCL_EXTERNAL bool intersect_scene(Ray& ray, HitInfo& closest_hit_info) const;
     SYCL_EXTERNAL bool intersect_scene_bvh(Ray& ray, HitInfo& closest_hit_info) const;

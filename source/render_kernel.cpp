@@ -82,6 +82,9 @@ Ray RenderKernel::get_camera_ray(float x, float y) const
 
 void RenderKernel::ray_trace_pixel(int x, int y) const
 {
+    if (x != m_width / 2 || y != m_height / 2)
+        return;
+
     xorshift32_generator random_number_generator(x * y * SAMPLES_PER_KERNEL * (m_kernel_iteration + 1));
 
     Color final_color = Color(0.0f, 0.0f, 0.0f);
@@ -139,12 +142,11 @@ void RenderKernel::ray_trace_pixel(int x, int y) const
                         //PDF: Probability of having chosen this point on this exact light source
                         radiance /= light_sample_pdf;
                         //BRDF of the illuminated surface
-                        radiance *= microfacet_brdf(material, shadow_ray.direction, -ray.direction, closest_hit_info.normal_at_inter);
+                        radiance *= cook_torrance_brdf(material, shadow_ray.direction, -ray.direction, closest_hit_info.normal_at_inter);
                     }
 
                     float random_bounce_direction_pdf;
-                    Vector random_bounce_direction = uniform_direction_around_normal(closest_hit_info.normal_at_inter, random_bounce_direction_pdf, random_number_generator);
-                    Point new_ray_origin = closest_hit_info.inter_point + closest_hit_info.normal_at_inter * 1.0e-4f;
+                    //Vector random_bounce_direction = uniform_direction_around_normal(closest_hit_info.normal_at_inter, random_bounce_direction_pdf, random_number_generator);
 
 
 
@@ -152,7 +154,11 @@ void RenderKernel::ray_trace_pixel(int x, int y) const
                     // ---------- Indirect lighting ---------- //
                     // --------------------------------------- //
 
-                    Color brdf = microfacet_brdf(material, random_bounce_direction, -ray.direction, closest_hit_info.normal_at_inter);
+                    //TODO dans quel sens on doit appliquer le throughput, pdf, ...
+                    Vector random_bounce_direction;
+                    Point new_ray_origin = closest_hit_info.inter_point + closest_hit_info.normal_at_inter * 1.0e-4f;
+                    Color brdf = cook_torrance_brdf_importance_sample(material, -ray.direction, closest_hit_info.normal_at_inter, random_bounce_direction, random_bounce_direction_pdf, random_number_generator);
+                    //Color brdf = cook_torrance_brdf(material, random_bounce_direction, -ray.direction, closest_hit_info.normal_at_inter);
                     throughput *= brdf * sycl::max(0.0f, dot(random_bounce_direction, closest_hit_info.normal_at_inter));
 
                     if (bounce == 0)
@@ -161,7 +167,7 @@ void RenderKernel::ray_trace_pixel(int x, int y) const
 
                     throughput /= random_bounce_direction_pdf;
 
-                    ray = Ray(new_ray_origin, normalize(random_bounce_direction));
+                    ray = Ray(new_ray_origin, random_bounce_direction);
                     next_ray_state = RayState::BOUNCE;
                 }
                 else
@@ -177,7 +183,7 @@ void RenderKernel::ray_trace_pixel(int x, int y) const
                 sycl::float4 skysphere_color_float4 = m_skysphere.read(coords, m_skysphere_sampler);
                 Color skysphere_color = Color(skysphere_color_float4.x(), skysphere_color_float4.y(), skysphere_color_float4.z());
 
-                sample_color += skysphere_color * throughput;
+                //sample_color += skysphere_color * throughput;
 
                 break;
             }
@@ -240,17 +246,16 @@ float GGX_smith_masking_shadowing(float roughness_squared, float NoV, float NoL)
     return G1_schlick_ggx(k, NoL) * G1_schlick_ggx(k, NoV);
 }
 
-Color RenderKernel::microfacet_brdf(const SimpleMaterial& material, const Vector& to_light_direction, const Vector& view_direction, const Vector& surface_normal) const
+Color RenderKernel::cook_torrance_brdf(const SimpleMaterial& material, const Vector& to_light_direction, const Vector& view_direction, const Vector& surface_normal) const
 {
     Color brdf_color = Color(0.0f, 0.0f, 0.0f);
     Color base_color = material.diffuse;
 
-    Vector surface_normal_normalized = normalize(surface_normal);
     Vector halfway_vector = normalize(view_direction + to_light_direction);
 
-    float NoV = sycl::max(0.0f, dot(surface_normal_normalized, view_direction));
-    float NoL = sycl::max(0.0f, dot(surface_normal_normalized, to_light_direction));
-    float NoH = sycl::max(0.0f, dot(surface_normal_normalized, halfway_vector));
+    float NoV = sycl::max(0.0f, dot(surface_normal, view_direction));
+    float NoL = sycl::max(0.0f, dot(surface_normal, to_light_direction));
+    float NoH = sycl::max(0.0f, dot(surface_normal, halfway_vector));
     float VoH = sycl::max(0.0f, dot(halfway_vector, view_direction));
 
     if (NoV > 0.0f && NoL > 0.0f && NoH > 0.0f)
@@ -281,6 +286,70 @@ Color RenderKernel::microfacet_brdf(const SimpleMaterial& material, const Vector
         brdf_color = diffuse_part + specular_part;
     }
 
+    return brdf_color;
+}
+
+Color RenderKernel::cook_torrance_brdf_importance_sample(const SimpleMaterial& material, const Vector& view_direction, const Vector& surface_normal, Vector& output_direction, float& pdf, xorshift32_generator& random_number_generator) const
+{
+    float metalness = 0.0f;
+    float roughness = 0.1f;
+
+    float alpha = roughness * roughness;
+
+    float rand1 = random_number_generator();
+    float rand2 = random_number_generator();
+
+    float phi = 2.0f * M_PI * rand1;
+    float theta = sycl::acos((1 - rand2) / (rand2 * (alpha * alpha - 1) + 1));
+    float sin_theta = sycl::sin(theta);
+
+    Vector microfacet_normal_local_space = normalize(Vector(sycl::cos(phi) * sin_theta, sycl::sin(phi) * sin_theta, sycl::cos(theta)));
+    //m_out_stream << microfacet_normal_local_space << sycl::endl;
+    Vector microfacet_normal = normalize(rotate_vector_around_normal(surface_normal, microfacet_normal_local_space));//TODO remove normalize ?
+    if (dot(microfacet_normal, surface_normal) < 0)
+        //The microfacet normal that we sampled was under the surface, it can happen
+        return Color(0, 0, 0);
+    Vector to_light_direction = normalize(2.0f * dot(microfacet_normal, view_direction) * microfacet_normal - view_direction);//TODO remove normalize ?
+    output_direction = to_light_direction;
+    Vector halfway_vector = microfacet_normal;
+    //halfway_vector = normalize(surface_normal + view_direction);
+
+    Color brdf_color = Color(0.0f, 0.0f, 0.0f);
+    Color base_color = material.diffuse;
+
+    float NoV = sycl::max(0.0f, dot(surface_normal, view_direction));
+    float NoL = sycl::max(0.0f, dot(surface_normal, to_light_direction));
+    float NoH = sycl::max(0.0f, dot(surface_normal, halfway_vector));
+    float VoH = sycl::max(0.0f, dot(halfway_vector, view_direction));
+
+    if (NoV > 0.0f && NoL > 0.0f && NoH > 0.0f)
+    {
+        /////////// Cook Torrance BRDF //////////
+        Color F;
+        float D, G;
+
+        //F0 = 0.04 for dielectrics, 1.0 for metals (approximation)
+        Color F0 = Color(0.04f * (1.0f - metalness)) + metalness * base_color;
+
+        //GGX Distribution function
+        F = fresnel_schlick(F0, VoH);
+        D = GGX_normal_distribution(alpha, NoH);
+        m_out_stream << D << sycl::endl;
+        G = GGX_smith_masking_shadowing(alpha, NoV, NoL);
+
+        Color kD = Color(1.0f - metalness); //Metals do not have a diffuse part
+        kD *= Color(1.0f) - F;//Only the transmitted light is diffused
+
+        Color diffuse_part = kD * base_color / M_PI;
+        Color specular_part = (F * D * G) / (4.0f * NoV * NoL);
+
+        brdf_color = diffuse_part + specular_part;
+
+        pdf = D * NoH / (4.0f * VoH);
+    }
+
+    m_out_stream << brdf_color << sycl::endl;
+    m_out_stream << pdf << sycl::endl;
     return brdf_color;
 }
 
