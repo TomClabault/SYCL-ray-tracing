@@ -72,7 +72,7 @@ int main(int argc, char* argv[])
 
     Image image(width, height);
 
-    ParsedOBJ parsed_obj = Utils::parse_obj("../SYCL-ray-tracing/data/OBJs/cornell.obj");
+    ParsedOBJ parsed_obj = Utils::parse_obj("../SYCL-ray-tracing/data/OBJs/cornell_pbr.obj");
 
     BVH bvh(&parsed_obj.triangles);
     FlattenedBVH flat_bvh = bvh.flatten();
