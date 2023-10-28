@@ -7,6 +7,9 @@ struct SimpleMaterial
 {
     Color emission;
     Color diffuse;
+
+    float metalness;
+    float roughness;
 };
 
 #endif

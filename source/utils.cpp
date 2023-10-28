@@ -59,7 +59,7 @@ ParsedOBJ Utils::parse_obj(const std::string& filepath)
     //Computing SimpleMaterials
     std::vector<SimpleMaterial>& materials_buffer = parsed_obj.materials;
     for (const rapidobj::Material& material : rapidobj_result.materials)
-        materials_buffer.push_back(SimpleMaterial {Color(material.emission), Color(material.diffuse)});
+        materials_buffer.push_back(SimpleMaterial {Color(material.emission), Color(material.diffuse), material.metallic, material.roughness});
 
     return parsed_obj;
 }
