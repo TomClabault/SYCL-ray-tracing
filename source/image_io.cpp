@@ -60,7 +60,6 @@ float range( const Image& image )
         bins[b]++;
     }
     
-    float saturation= 0;
     float qbins= 0;
     for(unsigned i= 0; i < 100; i++)
     {

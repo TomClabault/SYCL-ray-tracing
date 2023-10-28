@@ -1,3 +1,4 @@
+#define _USE_MATH_DEFINES
 
 #include <cassert>
 #include <cstdio>
@@ -5,7 +6,6 @@
 #include <algorithm>
 
 #include "mat.h"
-
 
 float radians( const float deg )
 {
@@ -15,18 +15,6 @@ float radians( const float deg )
 float degrees( const float rad )
 {
     return (180.f / (float) M_PI) * rad;
-}
-
-Transform::Transform (
-    const float t00, const float t01, const float t02, const float t03,
-    const float t10, const float t11, const float t12, const float t13,
-    const float t20, const float t21, const float t22, const float t23,
-    const float t30, const float t31, const float t32, const float t33 )
-{
-    m[0][0]= t00; m[0][1]= t01; m[0][2]= t02; m[0][3]= t03;
-    m[1][0]= t10; m[1][1]= t11; m[1][2]= t12; m[1][3]= t13;
-    m[2][0]= t20; m[2][1]= t21; m[2][2]= t22; m[2][3]= t23;
-    m[3][0]= t30; m[3][1]= t31; m[3][2]= t32; m[3][3]= t33;
 }
 
 Transform& Transform::column( const unsigned id, const float t0, const float t1, const float t2, const float t3 )
@@ -418,8 +406,8 @@ Transform Transform::inverse( ) const
             }
         }
 
-        assert(irow >= 0 && irow < 4);
-        assert(icol >= 0 && icol < 4);
+        /*assert(irow >= 0 && irow < 4);
+        assert(icol >= 0 && icol < 4);*/
 
         ++ipiv[icol];
         // Swap rows _irow_ and _icol_ for pivot

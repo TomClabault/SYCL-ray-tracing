@@ -19,7 +19,7 @@
 
 struct LightSourceInformation
 {
-    int emissive_triangle_index;
+    int emissive_triangle_index = -1;
     Vector light_source_normal;
 };
 

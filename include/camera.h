@@ -4,6 +4,9 @@
 
 #include "mat.h"
 
+#define _USE_MATH_DEFINES
+#include <math.h>
+
 struct Camera
 {
     static inline const Transform DEFAULT_COORDINATES_SYSTEM = Transform(Vector(1, 0, 0), Vector(0, 1, 0), Vector(0, 0, -1), Vector(0, 0, 0));

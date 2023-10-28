@@ -21,19 +21,19 @@ struct Point;
 struct Point
 {
     //! constructeur par defaut.
-    Point( ) : x(0), y(0), z(0) {}
-    explicit Point( const float _x, const float _y, const float _z ) : x(_x), y(_y), z(_z) {}
+    SYCL_EXTERNAL Point( ) : x(0), y(0), z(0) {}
+    SYCL_EXTERNAL explicit Point( const float _x, const float _y, const float _z ) : x(_x), y(_y), z(_z) {}
 
     //! cree un point a partir des coordonnees du vecteur generique (v.x, v.y, v.z).
-    Point( const vec2& v, const float z );   // l'implementation se trouve en fin de fichier, la structure vec3 n'est pas encore connue.
-    Point( const vec3& v );   // l'implementation se trouve en fin de fichier, la structure vec3 n'est pas encore connue.
-    Point( const vec4& v );   // l'implementation se trouve en fin de fichier, la structure vec3 n'est pas encore connue.
+    SYCL_EXTERNAL Point( const vec2& v, const float z );   // l'implementation se trouve en fin de fichier, la structure vec3 n'est pas encore connue.
+    SYCL_EXTERNAL Point( const vec3& v );   // l'implementation se trouve en fin de fichier, la structure vec3 n'est pas encore connue.
+    SYCL_EXTERNAL Point( const vec4& v );   // l'implementation se trouve en fin de fichier, la structure vec3 n'est pas encore connue.
     //! cree un point a partir des coordonnes du vecteur (v.x, v.y, v.z).
-    explicit Point( const Vector& v );   // l'implementation se trouve en fin de fichier, la structure vector n'est pas encore connue.
+    SYCL_EXTERNAL explicit Point( const Vector& v );   // l'implementation se trouve en fin de fichier, la structure vector n'est pas encore connue.
     
     //! renvoie la ieme composante du point.
-    float operator() ( const unsigned int i ) const; // l'implementation se trouve en fin de fichier
-    float& operator() ( const unsigned int i ); // l'implementation se trouve en fin de fichier
+    SYCL_EXTERNAL float operator() ( const unsigned int i ) const; // l'implementation se trouve en fin de fichier
+    SYCL_EXTERNAL float& operator() ( const unsigned int i ); // l'implementation se trouve en fin de fichier
     
     float x, y, z;
 };
@@ -59,11 +59,11 @@ SYCL_EXTERNAL Point max( const Point& a, const Point& b );
 struct Vector
 {
     //! constructeur par defaut.
-    Vector( ) : x(0), y(0), z(0) {}
-    explicit Vector( const float _x, const float _y, const float _z ) : x(_x), y(_y), z(_z) {}
+    SYCL_EXTERNAL Vector( ) : x(0), y(0), z(0) {}
+    SYCL_EXTERNAL explicit Vector( const float _x, const float _y, const float _z ) : x(_x), y(_y), z(_z) {}
     
     //! cree le vecteur ab.
-    explicit Vector( const Point& a, const Point& b ) : x(b.x - a.x), y(b.y - a.y), z(b.z - a.z) {}
+    SYCL_EXTERNAL explicit Vector( const Point& a, const Point& b ) : x(b.x - a.x), y(b.y - a.y), z(b.z - a.z) {}
 
     //! cree un vecteur a partir des coordonnees du vecteur generique (v.x, v.y, v.z).
     SYCL_EXTERNAL Vector( const vec3& v );   // l'implementation se trouve en fin de fichier, la structure vec3 n'est pas encore connue.
@@ -134,11 +134,11 @@ struct vec2
 {
     //! constructeur par defaut.
     vec2( ) : x(0), y(0) {}
-    explicit vec2( const float _x, const float _y ) : x(_x), y(_y) {}
+    SYCL_EXTERNAL explicit vec2( const float _x, const float _y ) : x(_x), y(_y) {}
     
     //! renvoie la ieme composante du vecteur.
-    float operator() ( const unsigned int i ) const { return (&x)[i]; }
-    float& operator() ( const unsigned int i ) { return (&x)[i]; }
+    SYCL_EXTERNAL float operator() ( const unsigned int i ) const { return (&x)[i]; }
+    SYCL_EXTERNAL float& operator() ( const unsigned int i ) { return (&x)[i]; }
 
     float x, y;
 };
@@ -148,19 +148,19 @@ struct vec2
 struct vec3
 {
     //! constructeur par defaut.
-    vec3( ) : x(0), y(0), z(0) {}
-    explicit vec3( const float _x, const float _y, const float _z ) : x(_x), y(_y), z(_z) {}
+    SYCL_EXTERNAL vec3( ) : x(0), y(0), z(0) {}
+    SYCL_EXTERNAL explicit vec3( const float _x, const float _y, const float _z ) : x(_x), y(_y), z(_z) {}
     //! constructeur par defaut.
-    vec3( const vec2& a, const float _z ) : x(a.x), y(a.y), z(_z) {}
+    SYCL_EXTERNAL vec3( const vec2& a, const float _z ) : x(a.x), y(a.y), z(_z) {}
 
     //! cree un vecteur generique a partir des coordonnees du point a.
-    vec3( const Point& a );    // l'implementation se trouve en fin de fichier.
+    SYCL_EXTERNAL vec3( const Point& a );    // l'implementation se trouve en fin de fichier.
     //! cree un vecteur generique a partir des coordonnees du vecteur v.
-    vec3( const Vector& v );    // l'implementation se trouve en fin de fichier.
+    SYCL_EXTERNAL vec3( const Vector& v );    // l'implementation se trouve en fin de fichier.
 
     //! renvoie la ieme composante du vecteur.
-    float operator() ( const unsigned int i ) const { return (&x)[i]; }
-    float& operator() ( const unsigned int i ) { return (&x)[i]; }
+    SYCL_EXTERNAL float operator() ( const unsigned int i ) const { return (&x)[i]; }
+    SYCL_EXTERNAL float& operator() ( const unsigned int i ) { return (&x)[i]; }
     
     float x, y, z;
 };
@@ -170,21 +170,21 @@ struct vec3
 struct vec4
 {
     //! constructeur par defaut.
-    vec4( ) : x(0), y(0), z(0), w(0) {}
-    explicit vec4( const float _x, const float _y, const float _z, const float _w ) : x(_x), y(_y), z(_z), w(_w) {}
+    SYCL_EXTERNAL vec4( ) : x(0), y(0), z(0), w(0) {}
+    SYCL_EXTERNAL explicit vec4( const float _x, const float _y, const float _z, const float _w ) : x(_x), y(_y), z(_z), w(_w) {}
     //! constructeur par defaut.
-    vec4( const vec2& v, const float _z= 0, const float _w= 0 ) : x(v.x), y(v.y), z(_z), w(_w) {}
+    SYCL_EXTERNAL vec4( const vec2& v, const float _z= 0, const float _w= 0 ) : x(v.x), y(v.y), z(_z), w(_w) {}
     //! constructeur par defaut.
-    vec4( const vec3& v, const float _w= 0 ) : x(v.x), y(v.y), z(v.z), w(_w) {}
+    SYCL_EXTERNAL vec4( const vec3& v, const float _w= 0 ) : x(v.x), y(v.y), z(v.z), w(_w) {}
 
     //! cree un vecteur generique a partir des coordonnees du point a, (a.x, a.y, a.z, 1).
-    vec4( const Point& a );    // l'implementation se trouve en fin de fichier.
+    SYCL_EXTERNAL vec4( const Point& a );    // l'implementation se trouve en fin de fichier.
     //! cree un vecteur generique a partir des coordonnees du vecteur v, (v.x, v.y, v.z, 0).
-    vec4( const Vector& v );    // l'implementation se trouve en fin de fichier.
+    SYCL_EXTERNAL vec4( const Vector& v );    // l'implementation se trouve en fin de fichier.
     
     //! renvoie la ieme composante du vecteur.
-    float operator() ( const unsigned int i ) const { return (&x)[i]; }
-    float& operator() ( const unsigned int i ) { return (&x)[i]; }
+    SYCL_EXTERNAL float operator() ( const unsigned int i ) const { return (&x)[i]; }
+    SYCL_EXTERNAL float& operator() ( const unsigned int i ) { return (&x)[i]; }
 
     float x, y, z, w;
 };
