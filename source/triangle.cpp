@@ -39,7 +39,7 @@ bool Triangle::intersect(const Ray& ray, HitInfo& hit_info) const
    if (t > EPSILON) // ray intersection
    {
        hit_info.inter_point = ray.origin + ray.direction * t;
-       hit_info.normal_at_inter = normalize(cross(edge1, edge2));
+       hit_info.normal_at_intersection = normalize(cross(edge1, edge2));
 
        hit_info.t = t;
 

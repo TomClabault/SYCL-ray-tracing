@@ -106,7 +106,7 @@ void RenderKernel::ray_trace_pixel(int x, int y) const
 
                 if (intersection_found)
                 {
-                    int material_index = m_materials_indices_buffer[closest_hit_info.triangle_index];
+                    int material_index = closest_hit_info.material_index;
                     SimpleMaterial material = m_materials_buffer_access[material_index];
 
                     // ------------------------------------- //
@@ -115,7 +115,7 @@ void RenderKernel::ray_trace_pixel(int x, int y) const
                     float light_sample_pdf;
                     LightSourceInformation light_source_info;
                     Point random_light_point = sample_random_point_on_lights(random_number_generator, light_sample_pdf, light_source_info);
-                    Point shadow_ray_origin = closest_hit_info.inter_point + closest_hit_info.normal_at_inter * 1.0e-4f;
+                    Point shadow_ray_origin = closest_hit_info.inter_point + closest_hit_info.normal_at_intersection * 1.0e-4f;
                     Vector shadow_ray_direction = random_light_point - shadow_ray_origin;
                     float distance_to_light = length(shadow_ray_direction);
                     Vector shadow_ray_direction_normalized = normalize(shadow_ray_direction);
@@ -131,7 +131,7 @@ void RenderKernel::ray_trace_pixel(int x, int y) const
 
                         radiance = emissive_triangle_material.emission;
                         //Cosine angle on the illuminated surface
-                        radiance *= sycl::max(dot(closest_hit_info.normal_at_inter, shadow_ray_direction_normalized), 0.0f);
+                        radiance *= sycl::max(dot(closest_hit_info.normal_at_intersection, shadow_ray_direction_normalized), 0.0f);
                         //Cosine angle on the light surface
                         radiance *= sycl::max(dot(light_source_info.light_source_normal, -shadow_ray_direction_normalized), 0.0f);
                         //Falloff of the light intensity with the distance squared
@@ -139,7 +139,7 @@ void RenderKernel::ray_trace_pixel(int x, int y) const
                         //PDF: Probability of having chosen this point on this exact light source
                         radiance /= light_sample_pdf;
                         //BRDF of the illuminated surface
-                        radiance *= cook_torrance_brdf(material, shadow_ray.direction, -ray.direction, closest_hit_info.normal_at_inter);
+                        radiance *= cook_torrance_brdf(material, shadow_ray.direction, -ray.direction, closest_hit_info.normal_at_intersection);
                     }
 
                     // --------------------------------------- //
@@ -147,9 +147,9 @@ void RenderKernel::ray_trace_pixel(int x, int y) const
                     // --------------------------------------- //
 
                     Vector random_bounce_direction;
-                    Point new_ray_origin = closest_hit_info.inter_point + closest_hit_info.normal_at_inter * 1.0e-4f;
-                    Color brdf = cook_torrance_brdf_importance_sample(material, -ray.direction, closest_hit_info.normal_at_inter, random_bounce_direction, random_number_generator);
-                    throughput *= brdf * sycl::max(0.0f, dot(random_bounce_direction, closest_hit_info.normal_at_inter));
+                    Point new_ray_origin = closest_hit_info.inter_point + closest_hit_info.normal_at_intersection * 1.0e-4f;
+                    Color brdf = cook_torrance_brdf_importance_sample(material, -ray.direction, closest_hit_info.normal_at_intersection, random_bounce_direction, random_number_generator);
+                    throughput *= brdf * sycl::max(0.0f, dot(random_bounce_direction, closest_hit_info.normal_at_intersection));
 
                     if (bounce == 0)
                         sample_color += material.emission;
@@ -277,8 +277,75 @@ Color RenderKernel::cook_torrance_brdf(const SimpleMaterial& material, const Vec
     return brdf_color;
 }
 
+Color fresnelSchlick(Color F0, float cosTheta) {
+  return F0 + (Color(1.0f) - F0) * sycl::pow(1.0f - cosTheta, 5.0f);
+}
+
+float D_GGX(float alpha, float NoH) {
+  float alpha2 = alpha * alpha;
+  float NoH2 = NoH * NoH;
+  float b = (NoH2 * (alpha2 - 1.0f) + 1.0f);
+  return alpha2 * (1.0f / (float)M_PI) / (b * b);
+}
+
+float G1_GGX_Schlick(float NoV, float alpha) {
+  float k = alpha / 2.0f;
+  return sycl::max(NoV, 0.001f) / (NoV * (1.0f - k) + k);
+}
+
+float G_Smith(float alpha, float NoV, float NoL) {
+  return G1_GGX_Schlick(NoL, alpha) * G1_GGX_Schlick(NoV, alpha);
+}
+
 Color RenderKernel::cook_torrance_brdf_importance_sample(const SimpleMaterial& material, const Vector& view_direction, const Vector& surface_normal, Vector& output_direction, xorshift32_generator& random_number_generator) const
 {
+//    Color baseColor = material.diffuse;
+//    float metalness = material.metalness;
+//    float roughness = material.roughness;
+//    float alpha = roughness * roughness;
+
+//    float rand1 = random_number_generator();
+//    float rand2 = random_number_generator();
+
+//    float phi = 2.0f * (float)M_PI * rand1;
+//    float theta = sycl::acos((1.0f - rand2) / (rand2 * (alpha * alpha - 1.0f) + 1.0f));
+//    float sin_theta = sycl::sin(theta);
+
+//    Vector microfacet_normal_local_space = Vector(sycl::cos(phi) * sin_theta, sycl::sin(phi) * sin_theta, sycl::cos(theta));
+//    Vector microfacet_normal = rotate_vector_around_normal(surface_normal, microfacet_normal_local_space);
+//    if (dot(microfacet_normal, surface_normal) < 0.0f)
+//        //The microfacet normal that we sampled was under the surface, it can happen
+//        return Color(0.0f, 0.0f, 0.0f);
+//    Vector L = 2.0f * dot(microfacet_normal, view_direction) * microfacet_normal - view_direction;
+//    Vector H = microfacet_normal;
+//    output_direction = L;
+
+
+//    float NoV = sycl::clamp(dot(surface_normal, view_direction), 0.0f, 1.0f);
+//    float NoL = sycl::clamp(dot(surface_normal, L), 0.0f, 1.0f);
+//    float NoH = sycl::clamp(dot(surface_normal, H), 0.0f, 1.0f);
+//    float VoH = sycl::clamp(dot(view_direction, H), 0.0f, 1.0f);
+
+//    Color f0 = Color(0.16f * (1.0f));
+//    f0 = Color(0.04f * (1.0f - metalness)) + metalness * baseColor;
+
+//    Color F = fresnelSchlick(f0, VoH);
+//    float D = D_GGX(alpha, NoH);
+//    float G = G_Smith(alpha, NoV, NoL);
+
+//    Color spec = (F * D * G) / (4.0f * sycl::max(NoV, 0.001f) * sycl::max(NoL, 0.001f));
+
+//    Color rhoD = baseColor;
+
+//    // optionally
+//    rhoD *= Color(1.0f) - F;
+
+//    rhoD *= Color(1.0f - metalness);
+
+//    Color diff = rhoD / (float)M_PI;
+
+//    return diff + spec / (D * NoH / sycl::max(0.0001f, (4.0f * VoH)));
+
     float metalness = material.metalness;
     float roughness = material.roughness;
     float alpha = roughness * roughness;
@@ -294,7 +361,7 @@ Color RenderKernel::cook_torrance_brdf_importance_sample(const SimpleMaterial& m
     Vector microfacet_normal = rotate_vector_around_normal(surface_normal, microfacet_normal_local_space);
     if (dot(microfacet_normal, surface_normal) < 0.0f)
         //The microfacet normal that we sampled was under the surface, it can happen
-        return Color(0.0f, 0.0f, 0.0f);
+        return Color(0.0f);
     Vector to_light_direction = 2.0f * dot(microfacet_normal, view_direction) * microfacet_normal - view_direction;
     Vector halfway_vector = microfacet_normal;
     output_direction = to_light_direction;
@@ -340,7 +407,7 @@ Color RenderKernel::cook_torrance_brdf_importance_sample(const SimpleMaterial& m
 bool RenderKernel::intersect_scene(Ray& ray, HitInfo& closest_hit_info) const
 {
     float closest_intersection_distance = -1;
-    bool intersection_found = false;
+    closest_hit_info.t = -1;
 
     for (int i = 0; i < m_triangle_buffer_access.size(); i++)
     {
@@ -351,16 +418,28 @@ bool RenderKernel::intersect_scene(Ray& ray, HitInfo& closest_hit_info) const
         {
             if (hit_info.t < closest_intersection_distance || closest_intersection_distance == -1.0f)
             {
-                hit_info.triangle_index = i;
+                hit_info.material_index = m_materials_indices_buffer[i];
                 closest_intersection_distance = hit_info.t;
                 closest_hit_info = hit_info;
-
-                intersection_found = true;
             }
         }
     }
 
-    return intersection_found;
+    for (int i = 0; i < m_sphere_buffer.size(); i++)
+    {
+        const Sphere& sphere = m_sphere_buffer[i];
+        HitInfo hit_info;
+        if (sphere.intersect(ray, hit_info))
+        {
+            if (hit_info.t < closest_intersection_distance || closest_intersection_distance == -1.0f)
+            {
+                closest_intersection_distance = hit_info.t;
+                closest_hit_info = hit_info;
+            }
+        }
+    }
+
+    return closest_hit_info.t != -1;
 }
 
 bool RenderKernel::intersect_scene_bvh(Ray& ray, HitInfo& closest_hit_info) const
@@ -400,7 +479,7 @@ bool RenderKernel::intersect_scene_bvh(Ray& ray, HitInfo& closest_hit_info) cons
                         {
                             closest_intersection_distance = local_hit_info.t;
                             closest_hit_info = local_hit_info;
-                            closest_hit_info.triangle_index = triangle_index;
+                            closest_hit_info.material_index = m_materials_indices_buffer[triangle_index];
                         }
                     }
                 }
@@ -408,6 +487,20 @@ bool RenderKernel::intersect_scene_bvh(Ray& ray, HitInfo& closest_hit_info) cons
             else
                 for (int i = 0; i < 8; i++)
                     stack.push(node.children[i]);
+        }
+    }
+
+    for (int i = 0; i < m_sphere_buffer.size(); i++)
+    {
+        const Sphere& sphere = m_sphere_buffer[i];
+        HitInfo hit_info;
+        if (sphere.intersect(ray, hit_info))
+        {
+            if (hit_info.t < closest_intersection_distance || closest_intersection_distance == -1.0f)
+            {
+                closest_intersection_distance = hit_info.t;
+                closest_hit_info = hit_info;
+            }
         }
     }
 

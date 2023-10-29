@@ -6,12 +6,12 @@
 struct HitInfo
 {
     Point inter_point;
-    Vector normal_at_inter;
+    Vector normal_at_intersection;
 
     float t = -1.0f; //Distance along ray
     float u, v; //Barycentric coordinates
 
-    int triangle_index;
+    int material_index;
 };
 
 #endif

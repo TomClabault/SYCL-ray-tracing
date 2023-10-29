@@ -5,13 +5,14 @@
 #include "camera.h"
 #include "color.h"
 #include "simple_material.h"
+#include "sphere.h"
 #include "triangle.h"
 #include "xorshift.h"
 
 #include <sycl/sycl.hpp>
 
-#define RENDER_KERNEL_ITERATIONS 4
-#define SAMPLES_PER_KERNEL 64
+#define RENDER_KERNEL_ITERATIONS 1
+#define SAMPLES_PER_KERNEL 1
 #define MAX_BOUNCES 5
 
 #define TILE_SIZE_X 8
@@ -32,6 +33,7 @@ public:
                  sycl::accessor<SimpleMaterial, 1, sycl::access::mode::read, sycl::access::target::device> materials_buffer_accessor,
                  sycl::accessor<int, 1, sycl::access::mode::read, sycl::access::target::device> emissive_triangle_indices_buffer_accessor,
                  sycl::accessor<int, 1, sycl::access::mode::read, sycl::access::target::device> materials_indices_buffer_accessor,
+                 sycl::accessor<Sphere, 1, sycl::access::mode::read, sycl::access::target::device> analytic_spheres_buffer,
                  sycl::accessor<FlattenedBVH::FlattenedNode, 1, sycl::access::mode::read, sycl::access::target::device> bvh_nodes,
                  sycl::accessor<sycl::float4, 2, sycl::access::mode::read, sycl::access::target::image> skysphere,
                  sycl::sampler skysphere_sampler,
@@ -42,6 +44,7 @@ public:
         m_materials_buffer_access(materials_buffer_accessor),
         m_emissive_triangle_indices_buffer(emissive_triangle_indices_buffer_accessor),
         m_materials_indices_buffer(materials_indices_buffer_accessor),
+        m_sphere_buffer(analytic_spheres_buffer),
         m_bvh_nodes(bvh_nodes),
         m_skysphere(skysphere),
         m_skysphere_width(skysphere.get_range()[1]),
@@ -85,6 +88,8 @@ private:
     sycl::accessor<SimpleMaterial, 1, sycl::access::mode::read, sycl::access::target::device> m_materials_buffer_access;
     sycl::accessor<int, 1, sycl::access::mode::read, sycl::access::target::device> m_emissive_triangle_indices_buffer;
     sycl::accessor<int, 1, sycl::access::mode::read, sycl::access::target::device> m_materials_indices_buffer;
+
+    sycl::accessor<Sphere, 1, sycl::access::mode::read, sycl::access::target::device> m_sphere_buffer;
 
     sycl::accessor<FlattenedBVH::FlattenedNode, 1, sycl::access::mode::read, sycl::access::target::device> m_bvh_nodes;
     sycl::accessor<Vector, 1, sycl::access::mode::read, sycl::access::target::constant_buffer> BVH_PLANE_NORMALS;

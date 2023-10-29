@@ -16,7 +16,6 @@ add_executable(SYCL_RayTracing
     ${SYCL_HEADERS}
 
     source/bvh.cpp
-    source/camera.cpp
     source/color.cpp
     source/flattened_bvh.cpp
     source/image_io.cpp
@@ -25,6 +24,7 @@ add_executable(SYCL_RayTracing
     source/ray.cpp
     source/render_kernel.cpp
     source/tests.cpp
+    source/sphere.cpp
     source/triangle.cpp
     source/triangle.cpp
     source/utils.cpp
@@ -41,6 +41,7 @@ add_executable(SYCL_RayTracing
     include/parsed_obj.h
     include/ray.h
     include/render_kernel.h
+    include/sphere.h
     include/simple_material.h
     include/tests.h
     include/triangle.h

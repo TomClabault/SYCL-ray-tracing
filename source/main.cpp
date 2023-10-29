@@ -12,11 +12,24 @@
 #include "image_io.h"
 #include "render_kernel.h"
 #include "simple_material.h"
+#include "sphere.h"
 #include "tests.h"
 #include "triangle.h"
 #include "utils.h"
 
 #include "xorshift.h"
+
+Sphere add_sphere_to_scene(ParsedOBJ& parsed_obj, const Point& center, float radius, const SimpleMaterial& material)
+{
+    int material_index = parsed_obj.materials.size();
+    parsed_obj.materials.push_back(material);
+
+    parsed_obj.material_indices.push_back(material_index);
+
+    Sphere sphere(center, radius, material_index);
+
+    return sphere;
+}
 
 int dichotomie(std::vector<float> bins, float random)
 {
@@ -74,6 +87,9 @@ int main(int argc, char* argv[])
 
     ParsedOBJ parsed_obj = Utils::parse_obj("../SYCL-ray-tracing/data/OBJs/cornell_pbr.obj");
 
+    Sphere sphere = add_sphere_to_scene(parsed_obj, Point(0.3275, 0.7, 0.3725), 0.2, SimpleMaterial {Color(0.0f), Color(1.0f, 0.71, 0.29), 1.0f, 0.4f});
+    std::vector<Sphere> spheres = { sphere };
+
     BVH bvh(&parsed_obj.triangles);
     FlattenedBVH flat_bvh = bvh.flatten();
 
@@ -82,6 +98,7 @@ int main(int argc, char* argv[])
     sycl::buffer<SimpleMaterial> materials_buffer(parsed_obj.materials.data(), parsed_obj.materials.size());
     sycl::buffer<int> emissive_triangle_indices_buffer(parsed_obj.emissive_triangle_indices.data(), parsed_obj.emissive_triangle_indices.size());
     sycl::buffer<int> materials_indices_buffer(parsed_obj.material_indices.data(), parsed_obj.material_indices.size());
+    sycl::buffer<Sphere> sphere_buffer(spheres.data(), spheres.size());
     sycl::buffer<FlattenedBVH::FlattenedNode> bvh_nodes_buffer(flat_bvh.get_nodes().data(), flat_bvh.get_nodes().size());
     sycl::buffer<Vector> bvh_plane_normals_buffer(BVH::BoundingVolume::PLANE_NORMALS, BVHConstants::PLANES_COUNT);
 
@@ -105,6 +122,7 @@ int main(int argc, char* argv[])
                 auto materials_buffer_access = materials_buffer.get_access<sycl::access::mode::read>(handler);
                 auto emissive_triangle_indices_buffer_access = emissive_triangle_indices_buffer.get_access<sycl::access::mode::read>(handler);
                 auto materials_indices_buffer_access = materials_indices_buffer.get_access<sycl::access::mode::read>(handler);
+                auto sphere_buffer_access = sphere_buffer.get_access<sycl::access::mode::read>(handler);
                 auto bvh_nodes_access = bvh_nodes_buffer.get_access<sycl::access::mode::read>(handler);
                 auto bvh_plane_normals = bvh_plane_normals_buffer.get_access<sycl::access::mode::read, sycl::access::target::constant_buffer>(handler);
                 auto skysphere_accessor = sycl::accessor<sycl::float4, 2, sycl::access::mode::read, sycl::access::target::image>(skysphere_hdr, handler);
@@ -122,6 +140,7 @@ int main(int argc, char* argv[])
                     materials_buffer_access,
                     emissive_triangle_indices_buffer_access,
                     materials_indices_buffer_access,
+                    sphere_buffer_access,
                     bvh_nodes_access,
                     skysphere_accessor,
                     skysphere_sampler,
@@ -134,6 +153,7 @@ int main(int argc, char* argv[])
         }
         catch (sycl::exception e)
         {
+            std::cout << "Kernel exception: ";
             std::cout << e.what() << std::endl;
             std::exit(-1);
         }
