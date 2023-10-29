@@ -8,7 +8,7 @@ Point Triangle::bbox_centroid() const
 //From https://en.wikipedia.org/wiki/M%C3%B6ller%E2%80%93Trumbore_intersection_algorithm
 bool Triangle::intersect(const Ray& ray, HitInfo& hit_info) const
 {
-    const float EPSILON = 0.0000001;
+    const float EPSILON = 0.0000001f;
    Vector edge1, edge2, h, s, q;
    float a, f, u, v;
    edge1 = m_b - m_a;
@@ -20,17 +20,17 @@ bool Triangle::intersect(const Ray& ray, HitInfo& hit_info) const
    if (a > -EPSILON && a < EPSILON)
        return false;    // This ray is parallel to this triangle.
 
-   f = 1.0 / a;
+   f = 1.0f / a;
    s = ray.origin - m_a;
    u = f * dot(s, h);
 
-   if (u < 0.0 || u > 1.0)
+   if (u < 0.0f || u > 1.0f)
        return false;
 
    q = cross(s, edge1);
    v = f * dot(ray.direction, q);
 
-   if (v < 0.0 || u + v > 1.0)
+   if (v < 0.0f || u + v > 1.0f)
        return false;
 
    // At this stage we can compute t to find out where the intersection point is on the line.

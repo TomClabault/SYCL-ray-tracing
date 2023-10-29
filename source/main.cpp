@@ -80,7 +80,7 @@ int main(int argc, char* argv[])
     const int width = 1280;
     const int height = 720;
 
-    sycl::queue queue {sycl::gpu_selector_v};
+    sycl::queue queue {sycl::cpu_selector_v};
     std::cout << "Using " << queue.get_device().get_info<sycl::info::device::name>() << std::endl;
 
     Image image(width, height);

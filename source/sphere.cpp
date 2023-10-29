@@ -7,22 +7,22 @@ bool Sphere::intersect(const Ray &ray, HitInfo& hit_info) const
     Vector L = ray.origin - center;
 
     //dot(ray._direction, ray._direction) = 1 because direction is normalized
-    constexpr float a = 1;
-    float b = 2 * dot(ray.direction, L);
+    constexpr float a = 1.0f;
+    float b = 2.0f * dot(ray.direction, L);
     float c = dot(L, L) - radius * radius;
 
-    float delta = b * b - 4 * a * c;
-    if (delta < 0)
+    float delta = b * b - 4.0f * a * c;
+    if (delta < 0.0f)
         return false;
     else
     {
-        constexpr float a2 = 2 * a;
+        constexpr float a2 = 2.0f * a;
 
-        if (delta == 0.0)
+        if (delta == 0.0f)
             hit_info.t = -b / a2;
         else
         {
-            float sqrt_delta = std::sqrt(delta);
+            float sqrt_delta = sycl::sqrt(delta);
 
             float t1 = (-b - sqrt_delta) / a2;
             float t2 = (-b + sqrt_delta) / a2;
@@ -30,12 +30,12 @@ bool Sphere::intersect(const Ray &ray, HitInfo& hit_info) const
             if (t1 < t2)
             {
                 hit_info.t = t1;
-                if (hit_info.t < 0)
+                if (hit_info.t < 0.0f)
                     hit_info.t = t2;
             }
         }
 
-        if (hit_info.t < 0)
+        if (hit_info.t < 0.0f)
             return false;
 
         hit_info.normal_at_intersection = normalize((ray.origin + ray.direction * hit_info.t) - center);

@@ -113,23 +113,23 @@ public:
                               const sycl::marray<float, BVHConstants::PLANES_COUNT>& denoms,
                               const sycl::marray<float, BVHConstants::PLANES_COUNT>& numers)
         {
-            float t_near = -INFINITY;
-            float t_far = INFINITY;
+            float t_near = (float)-INFINITY;
+            float t_far = (float)INFINITY;
 
             for (int i = 0; i < BVHConstants::PLANES_COUNT; i++)
             {
                 float denom = denoms[i];
-                if (denom == 0.0)
+                if (denom == 0.0f)
                     continue;
 
                 //inverse denom to avoid division
                 float d_near_i = (d_near[i] - numers[i]) / denom;
                 float d_far_i = (d_far[i] - numers[i]) / denom;
-                if (denom < 0)
+                if (denom < 0.0f)
                     std::swap(d_near_i, d_far_i);
 
-                t_near = std::max(t_near, d_near_i);
-                t_far = std::min(t_far, d_far_i);
+                t_near = sycl::max(t_near, d_near_i);
+                t_far = sycl::min(t_far, d_far_i);
 
                 if (t_far < t_near)
                     return false;
@@ -149,13 +149,13 @@ public:
             for (int i = 0; i < BVHConstants::PLANES_COUNT; i++)
             {
                 float denom = denoms[i];
-                if (denom == 0.0)
+                if (denom == 0.0f)
                     continue;
 
                 //inverse denom to avoid division
                 float d_near_i = (_d_near[i] - numers[i]) / denom;
                 float d_far_i = (_d_far[i] - numers[i]) / denom;
-                if (denom < 0)
+                if (denom < 0.0f)
                     std::swap(d_near_i, d_far_i);
 
                 t_near = std::max(t_near, d_near_i);

@@ -34,10 +34,10 @@ Vector RenderKernel::uniform_direction_around_normal(const Vector& normal, float
     float rand_1 = random_number_generator();
     float rand_2 = random_number_generator();
 
-    float phi = 2.0f * M_PI * rand_1;
+    float phi = 2.0f * (float)M_PI * rand_1;
     float root = sycl::sqrt(1.0f - rand_2 * rand_2);
 
-    pdf = 1.0f / (2.0f * M_PI);
+    pdf = 1.0f / (2.0f * (float)M_PI);
 
     //Generating a random direction in a local space with Z as the Up vector
     Vector random_dir_local_space(sycl::cos(phi) * root, sycl::sin(phi) * root, rand_2);
@@ -50,11 +50,11 @@ Vector RenderKernel::cosine_weighted_direction_around_normal(const Vector& norma
     float rand_2 = random_number_generator();
 
     float sqrt_rand_2 = sycl::sqrt(rand_2);
-    float phi = 2.0f * M_PI * rand_1;
+    float phi = 2.0f * (float)M_PI * rand_1;
     float cos_theta = sqrt_rand_2;
     float sin_theta = sycl::sqrt(sycl::max(0.0f, 1.0f - cos_theta * cos_theta));
 
-    pdf = sqrt_rand_2 / M_PI;
+    pdf = sqrt_rand_2 / (float)M_PI;
 
     //Generating a random direction in a local space with Z as the Up vector
     Vector random_dir_local_space = Vector(sycl::cos(phi) * sin_theta, sycl::sin(phi) * sin_theta, sqrt_rand_2);
@@ -102,7 +102,7 @@ void RenderKernel::ray_trace_pixel(int x, int y) const
             if (next_ray_state == BOUNCE)
             {
                 HitInfo closest_hit_info;
-                bool intersection_found = intersect_scene(ray, closest_hit_info);
+                bool intersection_found = intersect_scene_bvh(ray, closest_hit_info);
 
                 if (intersection_found)
                 {
@@ -299,53 +299,6 @@ float G_Smith(float alpha, float NoV, float NoL) {
 
 Color RenderKernel::cook_torrance_brdf_importance_sample(const SimpleMaterial& material, const Vector& view_direction, const Vector& surface_normal, Vector& output_direction, xorshift32_generator& random_number_generator) const
 {
-//    Color baseColor = material.diffuse;
-//    float metalness = material.metalness;
-//    float roughness = material.roughness;
-//    float alpha = roughness * roughness;
-
-//    float rand1 = random_number_generator();
-//    float rand2 = random_number_generator();
-
-//    float phi = 2.0f * (float)M_PI * rand1;
-//    float theta = sycl::acos((1.0f - rand2) / (rand2 * (alpha * alpha - 1.0f) + 1.0f));
-//    float sin_theta = sycl::sin(theta);
-
-//    Vector microfacet_normal_local_space = Vector(sycl::cos(phi) * sin_theta, sycl::sin(phi) * sin_theta, sycl::cos(theta));
-//    Vector microfacet_normal = rotate_vector_around_normal(surface_normal, microfacet_normal_local_space);
-//    if (dot(microfacet_normal, surface_normal) < 0.0f)
-//        //The microfacet normal that we sampled was under the surface, it can happen
-//        return Color(0.0f, 0.0f, 0.0f);
-//    Vector L = 2.0f * dot(microfacet_normal, view_direction) * microfacet_normal - view_direction;
-//    Vector H = microfacet_normal;
-//    output_direction = L;
-
-
-//    float NoV = sycl::clamp(dot(surface_normal, view_direction), 0.0f, 1.0f);
-//    float NoL = sycl::clamp(dot(surface_normal, L), 0.0f, 1.0f);
-//    float NoH = sycl::clamp(dot(surface_normal, H), 0.0f, 1.0f);
-//    float VoH = sycl::clamp(dot(view_direction, H), 0.0f, 1.0f);
-
-//    Color f0 = Color(0.16f * (1.0f));
-//    f0 = Color(0.04f * (1.0f - metalness)) + metalness * baseColor;
-
-//    Color F = fresnelSchlick(f0, VoH);
-//    float D = D_GGX(alpha, NoH);
-//    float G = G_Smith(alpha, NoV, NoL);
-
-//    Color spec = (F * D * G) / (4.0f * sycl::max(NoV, 0.001f) * sycl::max(NoL, 0.001f));
-
-//    Color rhoD = baseColor;
-
-//    // optionally
-//    rhoD *= Color(1.0f) - F;
-
-//    rhoD *= Color(1.0f - metalness);
-
-//    Color diff = rhoD / (float)M_PI;
-
-//    return diff + spec / (D * NoH / sycl::max(0.0001f, (4.0f * VoH)));
-
     float metalness = material.metalness;
     float roughness = material.roughness;
     float alpha = roughness * roughness;
@@ -406,8 +359,8 @@ Color RenderKernel::cook_torrance_brdf_importance_sample(const SimpleMaterial& m
 
 bool RenderKernel::intersect_scene(Ray& ray, HitInfo& closest_hit_info) const
 {
-    float closest_intersection_distance = -1;
-    closest_hit_info.t = -1;
+    float closest_intersection_distance = -1.0f;
+    closest_hit_info.t = -1.0f;
 
     for (int i = 0; i < m_triangle_buffer_access.size(); i++)
     {
@@ -439,12 +392,12 @@ bool RenderKernel::intersect_scene(Ray& ray, HitInfo& closest_hit_info) const
         }
     }
 
-    return closest_hit_info.t != -1;
+    return closest_hit_info.t != -1.0f;
 }
 
 bool RenderKernel::intersect_scene_bvh(Ray& ray, HitInfo& closest_hit_info) const
 {
-    closest_hit_info.t = -1;
+    closest_hit_info.t = -1.0f;
 
     FlattenedBVH::Stack stack;
     stack.push(0);//Pushing the root of the BVH
@@ -504,7 +457,7 @@ bool RenderKernel::intersect_scene_bvh(Ray& ray, HitInfo& closest_hit_info) cons
         }
     }
 
-    return closest_hit_info.t > -1;
+    return closest_hit_info.t > -1.0f;
 }
 
 Point RenderKernel::sample_random_point_on_lights(xorshift32_generator& random_number_generator, float& pdf, LightSourceInformation& light_info) const
