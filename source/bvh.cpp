@@ -5,8 +5,6 @@
 #include "bvh.h"
 #include "flattened_bvh.h"
 
-int globa_index;//TODO remove
-
 const Vector BVH::BoundingVolume::PLANE_NORMALS[BVHConstants::PLANES_COUNT] = {
 	Vector(1, 0, 0),
 	Vector(0, 1, 0),

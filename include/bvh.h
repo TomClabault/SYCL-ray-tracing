@@ -12,8 +12,6 @@
 #include "triangle.h"
 #include "ray.h"
 
-extern int globa_index;//TODO remove
-
 class FlattenedBVH;
 
 class BVH
@@ -228,16 +226,6 @@ public:
             _children[5] = new OctreeNode(Point(middle_x, _min.y, middle_z), Point(_max.x, middle_y, _max.z));
             _children[6] = new OctreeNode(_min + Point(0, middle_y, middle_z), Point(middle_x, _max.y, _max.z));
             _children[7] = new OctreeNode(Point(middle_x, middle_y, middle_z), Point(_max.x, _max.y, _max.z));
-
-            //TODO remove
-            _children[0]->debug_index = globa_index++;
-            _children[1]->debug_index = globa_index++;
-            _children[2]->debug_index = globa_index++;
-            _children[3]->debug_index = globa_index++;
-            _children[4]->debug_index = globa_index++;
-            _children[5]->debug_index = globa_index++;
-            _children[6]->debug_index = globa_index++;
-            _children[7]->debug_index = globa_index++;
         }
 
         void insert(const std::vector<Triangle>& triangles_geometry, int triangle_id_to_insert, int current_depth, int max_depth, int leaf_max_obj_count)

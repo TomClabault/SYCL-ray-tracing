@@ -78,18 +78,87 @@ struct Vector
     float x, y, z;
 };
 
-//! renvoie la valeur absolue des composantes
-SYCL_EXTERNAL Vector abs(const Vector& v);
-//! renvoie un vecteur unitaire / longueur == 1.
-SYCL_EXTERNAL Vector normalize( const Vector& v );
-//! renvoie le produit vectoriel de 2 vecteurs.
-SYCL_EXTERNAL Vector cross( const Vector& u, const Vector& v );
-//! renvoie le produit scalaire de 2 vecteurs.
-SYCL_EXTERNAL float dot( const Vector& u, const Vector& v );
-//! renvoie la longueur d'un vecteur.
-SYCL_EXTERNAL float length( const Vector& v );
-//! renvoie la carre de la longueur d'un vecteur.
-SYCL_EXTERNAL float length2( const Vector& v );
+inline Vector operator- ( const Point& a, const Point& b )
+{
+    return Vector(a.x - b.x, a.y - b.y, a.z - b.z);
+}
+
+inline Point operator* ( const float k, const Point& a )
+{
+    return Point(k * a.x, k * a.y, k * a.z);
+}
+
+inline Point operator* ( const Point& a, const float k )
+{
+    return k * a;
+}
+
+inline Point operator/ ( const Point& a, const float k )
+{
+    float kk= 1.f / k;
+    return kk * a;
+}
+
+inline Point operator+ ( const Point& a, const Point& b )
+{
+    return Point(a.x + b.x, a.y + b.y, a.z + b.z);
+}
+
+inline Vector operator- ( const Vector& v )
+{
+    return Vector(-v.x, -v.y, -v.z);
+}
+
+inline Point operator+ ( const Point& a, const Vector& v )
+{
+    return Point(a.x + v.x, a.y + v.y, a.z + v.z);
+}
+
+inline Point operator+ ( const Vector& v, const Point& a )
+{
+    return a + v;
+}
+
+inline Point operator- ( const Vector& v, const Point& a )
+{
+    return a + (-v);
+}
+
+inline Point operator- ( const Point& a, const Vector& v )
+{
+    return a + (-v);
+}
+
+inline Vector operator+ ( const Vector& u, const Vector& v )
+{
+    return Vector(u.x + v.x, u.y + v.y, u.z + v.z);
+}
+
+inline Vector operator- ( const Vector& u, const Vector& v )
+{
+    return Vector(u.x - v.x, u.y - v.y, u.z - v.z);
+}
+
+inline Vector operator* ( const float k, const Vector& v )
+{
+    return Vector(k * v.x, k * v.y, k * v.z);
+}
+
+inline Vector operator* ( const Vector& v, const float k )
+{
+    return k * v;
+}
+
+inline Vector operator* ( const Vector& a, const Vector& b )
+{
+    return Vector(a.x * b.x, a.y * b.y, a.z * b.z);
+}
+
+inline Vector operator/ ( const Vector& v, const float k )
+{
+    float kk= 1 / k;
+    return kk * v;
+}/*
 
 //! renvoie le vecteur a - b.
 SYCL_EXTERNAL Vector operator- ( const Point& a, const Point& b );
@@ -126,8 +195,41 @@ SYCL_EXTERNAL Vector operator* ( const Vector& v, const float k );
 //! renvoie le vecteur (a.x*b.x, a.y*b.y, a.z*b.z ).
 SYCL_EXTERNAL Vector operator* ( const Vector& a, const Vector& b );
 //! renvoie le vecteur v/k;
-SYCL_EXTERNAL Vector operator/ ( const Vector& v, const float k );
+SYCL_EXTERNAL Vector operator/ ( const Vector& v, const float k );*/
 
+inline float length2( const Vector& v )
+{
+    return v.x * v.x + v.y * v.y + v.z * v.z;
+}
+
+inline float length( const Vector& v )
+{
+    return sycl::sqrt(length2(v));
+}
+
+inline Vector abs(const Vector& v)
+{
+    return Vector(sycl::abs(v.x), sycl::abs(v.y), sycl::abs(v.z));
+}
+
+inline Vector normalize( const Vector& v )
+{
+    float kk= 1.0f / length(v);
+    return kk * v;
+}
+
+inline Vector cross( const Vector& u, const Vector& v )
+{
+    return Vector(
+        (u.y * v.z) - (u.z * v.y),
+        (u.z * v.x) - (u.x * v.z),
+        (u.x * v.y) - (u.y * v.x));
+}
+
+inline float dot( const Vector& u, const Vector& v )
+{
+    return u.x * v.x + u.y * v.y + u.z * v.z;
+}
 
 //! vecteur generique, utilitaire.
 struct vec2

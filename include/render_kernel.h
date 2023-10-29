@@ -11,8 +11,8 @@
 
 #include <sycl/sycl.hpp>
 
-#define RENDER_KERNEL_ITERATIONS 4
-#define SAMPLES_PER_KERNEL 16
+#define RENDER_KERNEL_ITERATIONS 16
+#define SAMPLES_PER_KERNEL 1
 #define MAX_BOUNCES 5
 
 #define TILE_SIZE_X 8
