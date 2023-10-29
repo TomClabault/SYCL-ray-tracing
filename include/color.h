@@ -27,45 +27,187 @@ struct Color
     //! cree une couleur avec les memes composantes que color, mais remplace sa composante alpha (color.r, color.g, color.b, alpha).
     Color( const Color& color, const float alpha ) : r(color.r), g(color.g), b(color.b), a(alpha) {}  // remplace alpha.
 
-    SYCL_EXTERNAL Color& operator=(const Vector& vec);
-    SYCL_EXTERNAL Color& operator+=(const Color& other);
-    SYCL_EXTERNAL Color& operator*=(const Color& other);
-    SYCL_EXTERNAL Color& operator*=(float k);
-    SYCL_EXTERNAL Color& operator/=(const float k);
+//    SYCL_EXTERNAL Color& operator=(const Vector& vec);
+//    SYCL_EXTERNAL Color& operator+=(const Color& other);
+//    SYCL_EXTERNAL Color& operator*=(const Color& other);
+//    SYCL_EXTERNAL Color& operator*=(float k);
+//    SYCL_EXTERNAL Color& operator/=(const float k);
+
+//    float power( ) const;
+//    float max( ) const;
+
+    inline Color& operator=(const Vector& vec)
+    {
+        r = vec.x;
+        g = vec.y;
+        b = vec.z;
+
+        return *this;
+    }
+
+    inline Color& operator+=(const Color &other)
+    {
+        r += other.r;
+        g += other.g;
+        b += other.b;
+
+        return *this;
+    }
+
+    inline Color& operator*=(const Color &other)
+    {
+        r *= other.r;
+        g *= other.g;
+        b *= other.b;
+
+        return *this;
+    }
+
+    inline Color& operator*=(float k)
+    {
+        r *= k;
+        g *= k;
+        b *= k;
+
+        return *this;
+    }
+
+    inline Color& operator/=(const float k)
+    {
+        r /= k;
+        g /= k;
+        b /= k;
+
+        return *this;
+    }
+
+    inline float power( ) const
+    {
+        return (r+g+b) / 3;
+    }
+
+    inline float max( ) const
+    {
+        return std::max(r, std::max(g, std::max(b, float(0))));
+    }
 
     friend std::ostream& operator << (std::ostream& os, const Color& color);
-
-    float power( ) const;
-    float max( ) const;
     
     float r, g, b, a;
 };
 
-//! utilitaire. renvoie une couleur noire.
-Color Black( );
-//! utilitaire. renvoie une couleur blanche.
-Color White( );
-//! utilitaire. renvoie une couleur rouge.
-Color Red( );
-//! utilitaire. renvoie une couleur verte.
-Color Green( );
-//! utilitaire. renvoie une couleur bleue.
-Color Blue( );
-//! utilitaire. renvoie une couleur jaune.
-Color Yellow( );
+inline Color Black( )
+{
+    return Color(0, 0, 0);
+}
 
-SYCL_EXTERNAL Color exp(const Color& col);
-SYCL_EXTERNAL Color pow(const Color& col, float k);
+inline Color White( )
+{
+    return Color(1, 1, 1);
+}
 
-SYCL_EXTERNAL Color operator+ ( const Color& a, const Color& b );
-SYCL_EXTERNAL Color operator- ( const Color& a, const Color& b );
-SYCL_EXTERNAL Color operator- ( const Color& c );
-SYCL_EXTERNAL Color operator* ( const Color& a, const Color& b );
-SYCL_EXTERNAL Color operator* ( const Color& c, const float k );
-SYCL_EXTERNAL Color operator* ( const float k, const Color& c );
-SYCL_EXTERNAL Color operator/ ( const Color& a, const Color& b );
-SYCL_EXTERNAL Color operator/ ( const float k, const Color& c );
-SYCL_EXTERNAL Color operator/ ( const Color& c, const float k );
+inline Color Red( )
+{
+    return Color(1, 0, 0);
+}
+
+inline Color Green( )
+{
+    return Color(0, 1, 0);
+}
+
+inline Color Blue( )
+{
+    return Color(0, 0, 1);
+}
+
+inline Color Yellow( )
+{
+    return Color(1, 1, 0);
+}
+
+
+inline Color operator+ ( const Color& a, const Color& b )
+{
+    return Color(a.r + b.r, a.g + b.g, a.b + b.b, a.a + b.a);
+}
+
+inline Color operator- ( const Color& c )
+{
+    return Color(-c.r, -c.g, -c.b, -c.a);
+}
+
+inline Color operator- ( const Color& a, const Color& b )
+{
+    return a + (-b);
+}
+
+inline Color operator* ( const Color& a, const Color& b )
+{
+    return Color(a.r * b.r, a.g * b.g, a.b * b.b, a.a * b.a);
+}
+
+inline Color operator* ( const float k, const Color& c )
+{
+    return Color(c.r * k, c.g * k, c.b * k, c.a * k);
+}
+
+inline Color operator* ( const Color& c, const float k )
+{
+    return k * c;
+}
+
+inline Color operator/ ( const Color& a, const Color& b )
+{
+    return Color(a.r / b.r, a.g / b.g, a.b / b.b, a.a / b.a);
+}
+
+inline Color operator/ ( const float k, const Color& c )
+{
+    return Color(k / c.r, k / c.g, k / c.b, k / c.a);
+}
+
+inline Color operator/ ( const Color& c, const float k )
+{
+    float kk= 1 / k;
+    return kk * c;
+}
+
+inline Color exp(const Color &col)
+{
+    return Color(std::exp(col.r), std::exp(col.g), std::exp(col.b), col.a);
+}
+
+inline Color pow(const Color &col, float k)
+{
+    return Color(std::pow(col.r, k), std::pow(col.g, k), std::pow(col.b, k), col.a);
+}
+
+////! utilitaire. renvoie une couleur noire.
+//Color Black( );
+////! utilitaire. renvoie une couleur blanche.
+//Color White( );
+////! utilitaire. renvoie une couleur rouge.
+//Color Red( );
+////! utilitaire. renvoie une couleur verte.
+//Color Green( );
+////! utilitaire. renvoie une couleur bleue.
+//Color Blue( );
+////! utilitaire. renvoie une couleur jaune.
+//Color Yellow( );
+
+//SYCL_EXTERNAL Color exp(const Color& col);
+//SYCL_EXTERNAL Color pow(const Color& col, float k);
+
+//SYCL_EXTERNAL Color operator+ ( const Color& a, const Color& b );
+//SYCL_EXTERNAL Color operator- ( const Color& a, const Color& b );
+//SYCL_EXTERNAL Color operator- ( const Color& c );
+//SYCL_EXTERNAL Color operator* ( const Color& a, const Color& b );
+//SYCL_EXTERNAL Color operator* ( const Color& c, const float k );
+//SYCL_EXTERNAL Color operator* ( const float k, const Color& c );
+//SYCL_EXTERNAL Color operator/ ( const Color& a, const Color& b );
+//SYCL_EXTERNAL Color operator/ ( const float k, const Color& c );
+//SYCL_EXTERNAL Color operator/ ( const Color& c, const float k );
 
 inline const sycl::stream& operator << (const sycl::stream& os, const Color& color)
 {

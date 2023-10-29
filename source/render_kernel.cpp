@@ -2,14 +2,6 @@
 
 #include "triangle.h"
 
-void RenderKernel::operator()(const sycl::nd_item<2>& coordinates) const
-{
-    int x = coordinates.get_global_id(0);
-    int y = coordinates.get_global_id(1);
-    
-    ray_trace_pixel(x, y);
-}
-
 void branchlessONB(const Vector& n, Vector& b1, Vector& b2)
 {
     float sign = sycl::copysign(1.0f, n.z);
@@ -102,7 +94,7 @@ void RenderKernel::ray_trace_pixel(int x, int y) const
             if (next_ray_state == BOUNCE)
             {
                 HitInfo closest_hit_info;
-                bool intersection_found = intersect_scene_bvh(ray, closest_hit_info);
+                bool intersection_found = intersect_scene(ray, closest_hit_info);
 
                 if (intersection_found)
                 {
@@ -234,7 +226,7 @@ float GGX_smith_masking_shadowing(float roughness_squared, float NoV, float NoL)
     return G1_schlick_ggx(k, NoL) * G1_schlick_ggx(k, NoV);
 }
 
-Color RenderKernel::cook_torrance_brdf(const SimpleMaterial& material, const Vector& to_light_direction, const Vector& view_direction, const Vector& surface_normal) const
+inline Color RenderKernel::cook_torrance_brdf(const SimpleMaterial& material, const Vector& to_light_direction, const Vector& view_direction, const Vector& surface_normal) const
 {
     Color brdf_color = Color(0.0f, 0.0f, 0.0f);
     Color base_color = material.diffuse;
@@ -297,7 +289,7 @@ float G_Smith(float alpha, float NoV, float NoL) {
   return G1_GGX_Schlick(NoL, alpha) * G1_GGX_Schlick(NoV, alpha);
 }
 
-Color RenderKernel::cook_torrance_brdf_importance_sample(const SimpleMaterial& material, const Vector& view_direction, const Vector& surface_normal, Vector& output_direction, xorshift32_generator& random_number_generator) const
+inline Color RenderKernel::cook_torrance_brdf_importance_sample(const SimpleMaterial& material, const Vector& view_direction, const Vector& surface_normal, Vector& output_direction, xorshift32_generator& random_number_generator) const
 {
     float metalness = material.metalness;
     float roughness = material.roughness;
@@ -395,7 +387,7 @@ bool RenderKernel::intersect_scene(Ray& ray, HitInfo& closest_hit_info) const
     return closest_hit_info.t != -1.0f;
 }
 
-bool RenderKernel::intersect_scene_bvh(Ray& ray, HitInfo& closest_hit_info) const
+inline bool RenderKernel::intersect_scene_bvh(Ray& ray, HitInfo& closest_hit_info) const
 {
     closest_hit_info.t = -1.0f;
 
@@ -438,8 +430,16 @@ bool RenderKernel::intersect_scene_bvh(Ray& ray, HitInfo& closest_hit_info) cons
                 }
             }
             else
-                for (int i = 0; i < 8; i++)
-                    stack.push(node.children[i]);
+            {
+                stack.push(node.children[0]);
+                stack.push(node.children[1]);
+                stack.push(node.children[2]);
+                stack.push(node.children[3]);
+                stack.push(node.children[4]);
+                stack.push(node.children[5]);
+                stack.push(node.children[6]);
+                stack.push(node.children[7]);
+            }
         }
     }
 
@@ -460,7 +460,7 @@ bool RenderKernel::intersect_scene_bvh(Ray& ray, HitInfo& closest_hit_info) cons
     return closest_hit_info.t > -1.0f;
 }
 
-Point RenderKernel::sample_random_point_on_lights(xorshift32_generator& random_number_generator, float& pdf, LightSourceInformation& light_info) const
+inline Point RenderKernel::sample_random_point_on_lights(xorshift32_generator& random_number_generator, float& pdf, LightSourceInformation& light_info) const
 {
     light_info.emissive_triangle_index = random_number_generator() * m_emissive_triangle_indices_buffer.size();
     light_info.emissive_triangle_index = m_emissive_triangle_indices_buffer[light_info.emissive_triangle_index];
@@ -492,7 +492,7 @@ Point RenderKernel::sample_random_point_on_lights(xorshift32_generator& random_n
 bool RenderKernel::evaluate_shadow_ray(Ray& ray, float t_max) const
 {
     HitInfo hit_info;
-    intersect_scene_bvh(ray, hit_info);
+    intersect_scene(ray, hit_info);
     if (hit_info.t + 1.0e-4f < t_max)
         //There is something in between the light and the origin of the ray
         return true;

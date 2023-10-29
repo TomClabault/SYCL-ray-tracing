@@ -59,7 +59,15 @@ public:
         BVH_PLANE_NORMALS = plane_normals_accessor;
     }
 
-    SYCL_EXTERNAL void operator()(const sycl::nd_item<2>& coordinates) const;
+    //SYCL_EXTERNAL void operator()(const sycl::nd_item<2>& coordinates) const;
+    inline void RenderKernel::operator()(const sycl::nd_item<2>& coordinates) const
+    {
+        int x = coordinates.get_global_id(0);
+        int y = coordinates.get_global_id(1);
+
+        ray_trace_pixel(x, y);
+    }
+
     SYCL_EXTERNAL Ray get_camera_ray(float x, float y) const;
 
     Vector rotate_vector_around_normal(const Vector& normal, const Vector& random_dir_local_space) const;

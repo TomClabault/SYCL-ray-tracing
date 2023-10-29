@@ -108,10 +108,11 @@ struct BoundingVolume
             float denom = denoms[i];
             if (denom == 0.0f)
                 continue;
+            float inv_denom = 1.0f / denom;
 
             //inverse denom to avoid division
-            float d_near_i = (d_near[i] - numers[i]) / denom;
-            float d_far_i = (d_far[i] - numers[i]) / denom;
+            float d_near_i = (d_near[i] - numers[i]) * inv_denom;
+            float d_far_i = (d_far[i] - numers[i]) * inv_denom;
             if (denom < 0.0f)
                 std::swap(d_near_i, d_far_i);
 
