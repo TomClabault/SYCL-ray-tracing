@@ -100,7 +100,7 @@ int main(int argc, char* argv[])
     sycl::buffer<int> materials_indices_buffer(parsed_obj.material_indices.data(), parsed_obj.material_indices.size());
     sycl::buffer<Sphere> sphere_buffer(spheres.data(), spheres.size());
     sycl::buffer<FlattenedBVH::FlattenedNode> bvh_nodes_buffer(flat_bvh.get_nodes().data(), flat_bvh.get_nodes().size());
-    sycl::buffer<Vector> bvh_plane_normals_buffer(BVH::BoundingVolume::PLANE_NORMALS, BVHConstants::PLANES_COUNT);
+    sycl::buffer<Vector> bvh_plane_normals_buffer(BoundingVolume::PLANE_NORMALS, BVHConstants::PLANES_COUNT);
 
     int skysphere_width, skysphere_height;
     std::vector<sycl::float4> skysphere_data = Utils::read_image_float("../SYCL-ray-tracing/data/Skyspheres/evening_road_01_puresky_8k.hdr", skysphere_width, skysphere_height);

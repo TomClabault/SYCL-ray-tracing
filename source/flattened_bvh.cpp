@@ -1,15 +1,10 @@
-#include "flattened_bvh.h"
-
+#include "bounding_volume.h"
 #include "bvh.h"
+#include "flattened_bvh.h"
 
 bool FlattenedBVH::FlattenedNode::intersect_volume(const std::array<float, BVHConstants::PLANES_COUNT>& denoms, const std::array<float, BVHConstants::PLANES_COUNT>& numers) const
 {
-    return BVH::BoundingVolume::intersect(d_near, d_far, denoms, numers);
-}
-
-bool FlattenedBVH::FlattenedNode::intersect_volume(const sycl::marray<float, BVHConstants::PLANES_COUNT>& denoms, const sycl::marray<float, BVHConstants::PLANES_COUNT>& numers) const
-{
-    return BVH::BoundingVolume::intersect(d_near, d_far, denoms, numers);
+    return BoundingVolume::intersect(d_near, d_far, denoms, numers);
 }
 
 bool FlattenedBVH::intersect(const Ray& ray, HitInfo& hit_info, const std::vector<Triangle>& triangles) const
@@ -24,8 +19,8 @@ bool FlattenedBVH::intersect(const Ray& ray, HitInfo& hit_info, const std::vecto
 
     for (int i = 0; i < BVHConstants::PLANES_COUNT; i++)
     {
-        denoms[i] = dot(BVH::BoundingVolume::PLANE_NORMALS[i], ray.direction);
-        numers[i] = dot(BVH::BoundingVolume::PLANE_NORMALS[i], Vector(ray.origin));
+        denoms[i] = dot(BoundingVolume::PLANE_NORMALS[i], ray.direction);
+        numers[i] = dot(BoundingVolume::PLANE_NORMALS[i], Vector(ray.origin));
     }
 
     float closest_intersection_distance = -1;

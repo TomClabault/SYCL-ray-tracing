@@ -30,6 +30,7 @@ add_executable(SYCL_RayTracing
     source/utils.cpp
     source/vec.cpp
 
+    include/bounding_volume.h
     include/bvh.h
     include/bvh_tests.h
     include/camera.h
