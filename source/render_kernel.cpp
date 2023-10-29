@@ -6,7 +6,7 @@ void RenderKernel::operator()(const sycl::nd_item<2>& coordinates) const
 {
     int x = coordinates.get_global_id(0);
     int y = coordinates.get_global_id(1);
-
+    
     ray_trace_pixel(x, y);
 }
 

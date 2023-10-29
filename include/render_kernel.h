@@ -54,7 +54,7 @@ public:
 
     void set_camera(Camera camera) { m_camera = camera; }
 
-    void set_bvh_plane_normals(const sycl::accessor<Vector, 1, sycl::access::mode::read, sycl::access::target::constant_buffer>& plane_normals_accessor)
+    void set_bvh_plane_normals(const sycl::accessor<Vector, 1, sycl::access::mode::read, sycl::access::target::device>& plane_normals_accessor)
     {
         BVH_PLANE_NORMALS = plane_normals_accessor;
     }
@@ -92,10 +92,10 @@ private:
     sycl::accessor<Sphere, 1, sycl::access::mode::read, sycl::access::target::device> m_sphere_buffer;
 
     sycl::accessor<FlattenedBVH::FlattenedNode, 1, sycl::access::mode::read, sycl::access::target::device> m_bvh_nodes;
-    sycl::accessor<Vector, 1, sycl::access::mode::read, sycl::access::target::constant_buffer> BVH_PLANE_NORMALS;
+    sycl::accessor<Vector, 1, sycl::access::mode::read, sycl::access::target::device> BVH_PLANE_NORMALS;
 
-    int m_skysphere_width, m_skysphere_height;
     sycl::accessor<sycl::float4, 2, sycl::access::mode::read, sycl::access::target::image> m_skysphere;
+    int m_skysphere_width, m_skysphere_height;
     sycl::sampler m_skysphere_sampler;
 
     sycl::stream m_out_stream;

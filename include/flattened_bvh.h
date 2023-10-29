@@ -32,7 +32,7 @@ public:
 
         //Indices of the children in the m_nodes vector
         std::array<int, 8> children = {-1, -1, -1, -1, -1, -1, -1, -1};
-        std::array<int, 8> triangles_indices;
+        std::array<int, BVHConstants::MAX_TRIANGLES_PER_LEAF> triangles_indices = { -1 };
 
         int nb_triangles = 0;
         int is_leaf;
