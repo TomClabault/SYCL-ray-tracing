@@ -13,7 +13,7 @@
 
 #define RENDER_KERNEL_ITERATIONS 1
 #define SAMPLES_PER_KERNEL 64
-#define MAX_BOUNCES 5
+#define MAX_BOUNCES 1
 
 #define TILE_SIZE_X 8
 #define TILE_SIZE_Y TILE_SIZE_X
@@ -31,10 +31,10 @@ public:
                  sycl::accessor<Color, 1, sycl::access::mode::write, sycl::access::target::device> frame_buffer_accessor,
                  sycl::accessor<Triangle, 1, sycl::access::mode::read, sycl::access::target::device> triangle_buffer_accessor,
                  sycl::accessor<SimpleMaterial, 1, sycl::access::mode::read, sycl::access::target::device> materials_buffer_accessor,
-                 sycl::accessor<int, 1, sycl::access::mode::read, sycl::access::target::device> emissive_triangle_indices_buffer_accessor,
+                 //sycl::accessor<int, 1, sycl::access::mode::read, sycl::access::target::device> emissive_triangle_indices_buffer_accessor,
                  sycl::accessor<int, 1, sycl::access::mode::read, sycl::access::target::device> materials_indices_buffer_accessor,
-                 sycl::accessor<Sphere, 1, sycl::access::mode::read, sycl::access::target::device> analytic_spheres_buffer,
-                 sycl::accessor<FlattenedBVH::FlattenedNode, 1, sycl::access::mode::read, sycl::access::target::device> bvh_nodes,
+                 //sycl::accessor<Sphere, 1, sycl::access::mode::read, sycl::access::target::device> analytic_spheres_buffer,
+                 //sycl::accessor<FlattenedBVH::FlattenedNode, 1, sycl::access::mode::read, sycl::access::target::device> bvh_nodes,
                  sycl::stream debug_out_stream) :
                  /*sycl::accessor<sycl::float4, 2, sycl::access::mode::read, sycl::access::target::image> skysphere,
                  sycl::sampler skysphere_sampler,*/
@@ -42,10 +42,10 @@ public:
         m_frame_buffer_access(frame_buffer_accessor),
         m_triangle_buffer_access(triangle_buffer_accessor),
         m_materials_buffer_access(materials_buffer_accessor),
-        m_emissive_triangle_indices_buffer(emissive_triangle_indices_buffer_accessor),
+        //m_emissive_triangle_indices_buffer(emissive_triangle_indices_buffer_accessor),
         m_materials_indices_buffer(materials_indices_buffer_accessor),
-        m_sphere_buffer(analytic_spheres_buffer),
-        m_bvh_nodes(bvh_nodes),
+        //m_sphere_buffer(analytic_spheres_buffer),
+        //m_bvh_nodes(bvh_nodes),
         /*m_skysphere(skysphere),
         m_skysphere_width(skysphere.get_range()[1]),
         m_skysphere_height(skysphere.get_range()[0]),
@@ -54,10 +54,10 @@ public:
 
     void set_camera(Camera camera) { m_camera = camera; }
 
-    void set_bvh_plane_normals(const sycl::accessor<Vector, 1, sycl::access::mode::read, sycl::access::target::device>& plane_normals_accessor)
+    /*void set_bvh_plane_normals(const sycl::accessor<Vector, 1, sycl::access::mode::read, sycl::access::target::device>& plane_normals_accessor)
     {
         BVH_PLANE_NORMALS = plane_normals_accessor;
-    }
+    }*/
 
     inline void operator()(const sycl::nd_item<2>& coordinates) const
     {
@@ -93,13 +93,13 @@ private:
 
     sycl::accessor<Triangle, 1, sycl::access::mode::read, sycl::access::target::device> m_triangle_buffer_access;
     sycl::accessor<SimpleMaterial, 1, sycl::access::mode::read, sycl::access::target::device> m_materials_buffer_access;
-    sycl::accessor<int, 1, sycl::access::mode::read, sycl::access::target::device> m_emissive_triangle_indices_buffer;
+    //sycl::accessor<int, 1, sycl::access::mode::read, sycl::access::target::device> m_emissive_triangle_indices_buffer;
     sycl::accessor<int, 1, sycl::access::mode::read, sycl::access::target::device> m_materials_indices_buffer;
 
-    sycl::accessor<Sphere, 1, sycl::access::mode::read, sycl::access::target::device> m_sphere_buffer;
+    //sycl::accessor<Sphere, 1, sycl::access::mode::read, sycl::access::target::device> m_sphere_buffer;
 
-    sycl::accessor<FlattenedBVH::FlattenedNode, 1, sycl::access::mode::read, sycl::access::target::device> m_bvh_nodes;
-    sycl::accessor<Vector, 1, sycl::access::mode::read, sycl::access::target::device> BVH_PLANE_NORMALS;
+    //sycl::accessor<FlattenedBVH::FlattenedNode, 1, sycl::access::mode::read, sycl::access::target::device> m_bvh_nodes;
+    //sycl::accessor<Vector, 1, sycl::access::mode::read, sycl::access::target::device> BVH_PLANE_NORMALS;
 
     /*sycl::accessor<sycl::float4, 2, sycl::access::mode::read, sycl::access::target::image> m_skysphere;
     int m_skysphere_width, m_skysphere_height;

@@ -76,23 +76,20 @@ Ray RenderKernel::get_camera_ray(float x, float y) const
 
 void RenderKernel::ray_trace_pixel(int x, int y) const
 {
-    /*if (!(x == 160 && y == 1))
-        return;*/
-
-    xorshift32_generator random_number_generator(x * y * SAMPLES_PER_KERNEL * (m_kernel_iteration + 1));
+    //xorshift32_generator random_number_generator(x * y * SAMPLES_PER_KERNEL * (m_kernel_iteration + 1));
     //Generating some numbers to make sure the generators of each thread spread apart
     //If not doing this, the generator shows clear artifacts until it has generated
     //a few numbers
+    /*random_number_generator();
     random_number_generator();
-    random_number_generator();
-    random_number_generator();
+    random_number_generator();*/
 
     Color final_color = Color(0.0f, 0.0f, 0.0f);
     for (int sample = 0; sample < SAMPLES_PER_KERNEL; sample++)
     {
         //Jittered around the center
-        float x_jittered = (x + 0.5f) + random_number_generator() - 1.0f;
-        float y_jittered = (y + 0.5f) + random_number_generator() - 1.0f;
+        float x_jittered = (x + 0.5f);// +random_number_generator() - 1.0f;
+        float y_jittered = (y + 0.5f);// +random_number_generator() - 1.0f;
 
         //TODO area sampling triangles
         Ray ray = get_camera_ray(x_jittered, y_jittered);
@@ -110,61 +107,63 @@ void RenderKernel::ray_trace_pixel(int x, int y) const
 
                 if (intersection_found)
                 {
+                    if (x == 0 && y == 0)
+                        m_out_stream << closest_hit_info << sycl::endl;
+
                     int material_index = closest_hit_info.material_index;
-                    //m_out_stream << material_index << " ";
-                    if (material_index < 0 || material_index > 8)
-                        m_out_stream << "here " << material_index << ", "  << x << ", " << y << sycl::endl;
                     SimpleMaterial material = m_materials_buffer_access[material_index];
-                    material = SimpleMaterial();
+                    sample_color = material.diffuse;
 
                     // ------------------------------------- //
                     // ---------- Direct lighting ---------- //
                     // ------------------------------------- //
                     float light_sample_pdf;
                     LightSourceInformation light_source_info;
-                    Point random_light_point = sample_random_point_on_lights(random_number_generator, light_sample_pdf, light_source_info);
+                    //Point random_light_point = sample_random_point_on_lights(random_number_generator, light_sample_pdf, light_source_info);
                     Point shadow_ray_origin = closest_hit_info.inter_point + closest_hit_info.normal_at_intersection * 1.0e-4f;
-                    Vector shadow_ray_direction = random_light_point - shadow_ray_origin;
+                    Vector shadow_ray_direction = Vector(1, 0, 0); //random_light_point - shadow_ray_origin;
                     float distance_to_light = length(shadow_ray_direction);
                     Vector shadow_ray_direction_normalized = normalize(shadow_ray_direction);
 
                     Ray shadow_ray(shadow_ray_origin, shadow_ray_direction_normalized);
 
-                    bool in_shadow = evaluate_shadow_ray(shadow_ray, distance_to_light);
+                    //bool in_shadow = evaluate_shadow_ray(shadow_ray, distance_to_light);
 
-                    Color radiance = Color(0.0f, 0.0f, 0.0f);
-                    //if (!in_shadow)
-                    //{
-                    //    const SimpleMaterial& emissive_triangle_material = m_materials_buffer_access[m_materials_indices_buffer[light_source_info.emissive_triangle_index]];
+                    //Color radiance = Color(0.0f, 0.0f, 0.0f);
+                    ////if (!in_shadow)
+                    ////{
+                    ////    const SimpleMaterial& emissive_triangle_material = m_materials_buffer_access[m_materials_indices_buffer[light_source_info.emissive_triangle_index]];
 
-                    //    radiance = emissive_triangle_material.emission;
-                    //    //Cosine angle on the illuminated surface
-                    //    radiance *= sycl::max(dot(closest_hit_info.normal_at_intersection, shadow_ray_direction_normalized), 0.0f);
-                    //    //Cosine angle on the light surface
-                    //    radiance *= sycl::max(dot(light_source_info.light_source_normal, -shadow_ray_direction_normalized), 0.0f);
-                    //    //Falloff of the light intensity with the distance squared
-                    //    radiance /= distance_to_light * distance_to_light;
-                    //    //PDF: Probability of having chosen this point on this exact light source
-                    //    radiance /= light_sample_pdf;
-                    //    //BRDF of the illuminated surface
-                    //    radiance *= cook_torrance_brdf(material, shadow_ray.direction, -ray.direction, closest_hit_info.normal_at_intersection);
-                    //}
+                    ////    radiance = emissive_triangle_material.emission;
+                    ////    //Cosine angle on the illuminated surface
+                    ////    radiance *= sycl::max(dot(closest_hit_info.normal_at_intersection, shadow_ray_direction_normalized), 0.0f);
+                    ////    //Cosine angle on the light surface
+                    ////    radiance *= sycl::max(dot(light_source_info.light_source_normal, -shadow_ray_direction_normalized), 0.0f);
+                    ////    //Falloff of the light intensity with the distance squared
+                    ////    radiance /= distance_to_light * distance_to_light;
+                    ////    //PDF: Probability of having chosen this point on this exact light source
+                    ////    radiance /= light_sample_pdf;
+                    ////    //BRDF of the illuminated surface
+                    ////    radiance *= cook_torrance_brdf(material, shadow_ray.direction, -ray.direction, closest_hit_info.normal_at_intersection);
+                    ////}
 
-                    // --------------------------------------- //
-                    // ---------- Indirect lighting ---------- //
-                    // --------------------------------------- //
+                    //// --------------------------------------- //
+                    //// ---------- Indirect lighting ---------- //
+                    //// --------------------------------------- //
 
-                    /*Vector random_bounce_direction;
-                    Color brdf = cook_torrance_brdf_importance_sample(material, -ray.direction, closest_hit_info.normal_at_intersection, random_bounce_direction, random_number_generator);
-                    throughput *= brdf * sycl::max(0.0f, dot(random_bounce_direction, closest_hit_info.normal_at_intersection));*/
-                    
-                    if (bounce == 0)
-                        sample_color += material.emission;
-                    //sample_color += Color(1.0f) * Color(1.0f, 0.0f, 0.0f);
-                    sample_color += radiance * throughput;
+                    ///*Vector random_bounce_direction;
+                    //Color brdf = cook_torrance_brdf_importance_sample(material, -ray.direction, closest_hit_info.normal_at_intersection, random_bounce_direction, random_number_generator);
+                    //throughput *= brdf * sycl::max(0.0f, dot(random_bounce_direction, closest_hit_info.normal_at_intersection));*/
+                    //
+                    //if (bounce == 0)
+                    //    sample_color += material.emission;
+                    ////sample_color += Color(1.0f) * Color(1.0f, 0.0f, 0.0f);
+                    //sample_color += radiance * throughput;
 
+                    float pdf;
+                    Vector random_bounce_direction = normalize(Vector(1, 2, 3));// uniform_direction_around_normal(closest_hit_info.normal_at_intersection, pdf, random_number_generator);
                     Point new_ray_origin = closest_hit_info.inter_point + closest_hit_info.normal_at_intersection * 1.0e-4f;
-                    ray = Ray(new_ray_origin, Vector(1.0f, 0.0f, 0.0f));
+                    ray = Ray(new_ray_origin, random_bounce_direction);
                     next_ray_state = RayState::BOUNCE;
                 }
                 else
@@ -178,9 +177,12 @@ void RenderKernel::ray_trace_pixel(int x, int y) const
 
                 sycl::int2 coords(v * m_skysphere_height, u * m_skysphere_width);
                 sycl::float4 skysphere_color_float4 = m_skysphere.read(coords, m_skysphere_sampler);
-                Color skysphere_color = Color(skysphere_color_float4.x(), skysphere_color_float4.y(), skysphere_color_float4.z());*/
+                Color skysphere_color = Color(skysphere_color_float4.x(), skysphere_color_float4.y(), skysphere_color_float4.z());
 
-                sample_color += Color(2.0f);// skysphere_color* throughput;
+                sample_color += skysphere_color * throughput;*/
+
+                m_out_stream << "here" << sycl::endl;
+                sample_color = Color();
 
                 break;
             }
@@ -376,11 +378,8 @@ bool RenderKernel::intersect_scene(const Ray& ray, HitInfo& closest_hit_info) co
         const Triangle& triangle = m_triangle_buffer_access[i];
 
         HitInfo hit_info;
-        triangle.intersect(ray, hit_info);
-        if (hit_info.t > 0)
+        if (triangle.intersect(ray, hit_info))
         {
-            hit_info.material_index = m_materials_indices_buffer[i];
-            //m_out_stream << hit_info << sycl::endl;
             if (hit_info.t < closest_intersection_distance || !inter_found)
             {
                 hit_info.material_index = m_materials_indices_buffer[i];
@@ -392,7 +391,7 @@ bool RenderKernel::intersect_scene(const Ray& ray, HitInfo& closest_hit_info) co
         }
     }
 
-    for (int i = 0; i < m_sphere_buffer.size(); i++)
+    /*for (int i = 0; i < m_sphere_buffer.size(); i++)
     {
         const Sphere& sphere = m_sphere_buffer[i];
 
@@ -407,120 +406,146 @@ bool RenderKernel::intersect_scene(const Ray& ray, HitInfo& closest_hit_info) co
                 inter_found = true;
             }
         }
-    }
+    }*/
 
     return inter_found;// closest_hit_info.t != -1.0f;
 }
 
 inline bool RenderKernel::intersect_scene_bvh(const Ray& ray, HitInfo& closest_hit_info) const
 {
-    closest_hit_info.t = -1.0f;
+    //closest_hit_info.t = -1.0f;
 
-    FlattenedBVH::Stack stack;
-    stack.push(0);//Pushing the root of the BVH
+    //FlattenedBVH::Stack stack;
+    //stack.push(0);//Pushing the root of the BVH
 
-    sycl::marray<float, BVHConstants::PLANES_COUNT> denoms;
-    sycl::marray<float, BVHConstants::PLANES_COUNT> numers;
+    //sycl::marray<float, BVHConstants::PLANES_COUNT> denoms;
+    //sycl::marray<float, BVHConstants::PLANES_COUNT> numers;
 
-    for (int i = 0; i < BVHConstants::PLANES_COUNT; i++)
-    {
-        denoms[i] = dot(BVH_PLANE_NORMALS[i], ray.direction);
-        numers[i] = dot(BVH_PLANE_NORMALS[i], Vector(ray.origin));
-    }
+    //for (int i = 0; i < BVHConstants::PLANES_COUNT; i++)
+    //{
+    //    denoms[i] = dot(BVH_PLANE_NORMALS[i], ray.direction);
+    //    numers[i] = dot(BVH_PLANE_NORMALS[i], Vector(ray.origin));
+    //}
 
-    float closest_intersection_distance = -1;
-    while (!stack.empty())
-    {
-        int node_index = stack.pop();
-        const FlattenedBVH::FlattenedNode& node = m_bvh_nodes[node_index];
+    //float closest_intersection_distance = -1;
+    //while (!stack.empty())
+    //{
+    //    int node_index = stack.pop();
+    //    const FlattenedBVH::FlattenedNode& node = m_bvh_nodes[node_index];
 
-        if (node.intersect_volume(denoms, numers))
-        {
-            if (node.is_leaf)
-            {
-                for (int i = 0; i < node.nb_triangles; i++)
-                {
-                    int triangle_index = node.triangles_indices[i];
+    //    if (node.intersect_volume(denoms, numers))
+    //    {
+    //        if (node.is_leaf)
+    //        {
+    //            for (int i = 0; i < node.nb_triangles; i++)
+    //            {
+    //                int triangle_index = node.triangles_indices[i];
 
-                    HitInfo local_hit_info;
-                    if (m_triangle_buffer_access[triangle_index].intersect(ray, local_hit_info))
-                    {
-                        if (closest_intersection_distance > local_hit_info.t || closest_intersection_distance == -1)
-                        {
-                            closest_intersection_distance = local_hit_info.t;
-                            closest_hit_info = local_hit_info;
-                            closest_hit_info.material_index = m_materials_indices_buffer[triangle_index];
-                        }
-                    }
-                }
-            }
-            else
-            {
-                stack.push(node.children[0]);
-                stack.push(node.children[1]);
-                stack.push(node.children[2]);
-                stack.push(node.children[3]);
-                stack.push(node.children[4]);
-                stack.push(node.children[5]);
-                stack.push(node.children[6]);
-                stack.push(node.children[7]);
-            }
-        }
-    }
+    //                HitInfo local_hit_info;
+    //                if (m_triangle_buffer_access[triangle_index].intersect(ray, local_hit_info))
+    //                {
+    //                    if (closest_intersection_distance > local_hit_info.t || closest_intersection_distance == -1)
+    //                    {
+    //                        closest_intersection_distance = local_hit_info.t;
+    //                        closest_hit_info = local_hit_info;
+    //                        closest_hit_info.material_index = m_materials_indices_buffer[triangle_index];
+    //                    }
+    //                }
+    //            }
+    //        }
+    //        else
+    //        {
+    //            stack.push(node.children[0]);
+    //            stack.push(node.children[1]);
+    //            stack.push(node.children[2]);
+    //            stack.push(node.children[3]);
+    //            stack.push(node.children[4]);
+    //            stack.push(node.children[5]);
+    //            stack.push(node.children[6]);
+    //            stack.push(node.children[7]);
+    //        }
+    //    }
+    //}
 
-    for (int i = 0; i < m_sphere_buffer.size(); i++)
-    {
-        const Sphere& sphere = m_sphere_buffer[i];
-        HitInfo hit_info;
-        if (sphere.intersect(ray, hit_info))
-        {
-            if (hit_info.t < closest_intersection_distance || closest_intersection_distance == -1.0f)
-            {
-                closest_intersection_distance = hit_info.t;
-                closest_hit_info = hit_info;
-            }
-        }
-    }
+    //for (int i = 0; i < m_sphere_buffer.size(); i++)
+    //{
+    //    const Sphere& sphere = m_sphere_buffer[i];
+    //    HitInfo hit_info;
+    //    if (sphere.intersect(ray, hit_info))
+    //    {
+    //        if (hit_info.t < closest_intersection_distance || closest_intersection_distance == -1.0f)
+    //        {
+    //            closest_intersection_distance = hit_info.t;
+    //            closest_hit_info = hit_info;
+    //        }
+    //    }
+    //}
 
-    return closest_hit_info.t > -1.0f;
+    //return closest_hit_info.t > -1.0f;
+    return true;
 }
 
 inline bool RenderKernel::INTERSECT_SCENE(const Ray& ray, HitInfo& hit_info) const
 {
-#if USE_BVH
-    return intersect_scene_bvh(ray, hit_info);
-#else
-    return intersect_scene(ray, hit_info);
-#endif
+//#if USE_BVH
+//    return intersect_scene_bvh(ray, hit_info);
+//#else
+//    return intersect_scene(ray, hit_info);
+//#endif
+
+    bool inter_found = false;
+    float closest_intersection_distance = 1000000.0f;
+    HitInfo closest_hit_info;
+    for (int i = 0; i < m_triangle_buffer_access.size(); i++)
+    {
+        const Triangle triangle = m_triangle_buffer_access[i];
+
+        HitInfo local_hit_info;
+        if (triangle.intersect(ray, local_hit_info))
+        {
+            if (local_hit_info.t < closest_intersection_distance || !inter_found)
+            {
+                closest_intersection_distance = local_hit_info.t;
+                hit_info = local_hit_info;
+                hit_info.material_index = m_materials_indices_buffer[i];
+
+                inter_found = true;
+            }
+        }
+    }
+
+    return inter_found;
 }
 
 inline Point RenderKernel::sample_random_point_on_lights(xorshift32_generator& random_number_generator, float& pdf, LightSourceInformation& light_info) const
 {
-    light_info.emissive_triangle_index = random_number_generator() * m_emissive_triangle_indices_buffer.size();
-    light_info.emissive_triangle_index = m_emissive_triangle_indices_buffer[light_info.emissive_triangle_index];
-    Triangle random_emissive_triangle = m_triangle_buffer_access[light_info.emissive_triangle_index];
+    //light_info.emissive_triangle_index = random_number_generator() * m_emissive_triangle_indices_buffer.size();
+    //light_info.emissive_triangle_index = m_emissive_triangle_indices_buffer[light_info.emissive_triangle_index];
+    //Triangle random_emissive_triangle = m_triangle_buffer_access[light_info.emissive_triangle_index];
 
-    float rand_1 = random_number_generator();
-    float rand_2 = random_number_generator();
+    //float rand_1 = random_number_generator();
+    //float rand_2 = random_number_generator();
 
-    float sqrt_r1 = sycl::sqrt(rand_1);
-    float u = 1.0f - sqrt_r1;
-    float v = (1.0f - rand_2) * sqrt_r1;
+    //float sqrt_r1 = sycl::sqrt(rand_1);
+    //float u = 1.0f - sqrt_r1;
+    //float v = (1.0f - rand_2) * sqrt_r1;
 
-    Vector AB = random_emissive_triangle.m_b - random_emissive_triangle.m_a;
-    Vector AC = random_emissive_triangle.m_c - random_emissive_triangle.m_a;
+    //Vector AB = random_emissive_triangle.m_b - random_emissive_triangle.m_a;
+    //Vector AC = random_emissive_triangle.m_c - random_emissive_triangle.m_a;
 
-    Point random_point_on_triangle = random_emissive_triangle.m_a + AB * u + AC * v;
+    //Point random_point_on_triangle = random_emissive_triangle.m_a + AB * u + AC * v;
 
-    Vector normal = cross(AB, AC);
-    float length_normal = length(normal);
-    light_info.light_source_normal = normal / length_normal; //Normalized
-    float triangle_area = length_normal * 0.5f;
-    float nb_emissive_triangles = m_emissive_triangle_indices_buffer.size();
+    //Vector normal = cross(AB, AC);
+    //float length_normal = length(normal);
+    //light_info.light_source_normal = normal / length_normal; //Normalized
+    //float triangle_area = length_normal * 0.5f;
+    //float nb_emissive_triangles = m_emissive_triangle_indices_buffer.size();
 
-    pdf = 1.0f / (nb_emissive_triangles * triangle_area);
+    //pdf = 1.0f / (nb_emissive_triangles * triangle_area);
 
-    return random_point_on_triangle;
+    //return random_point_on_triangle;
+
+    return Point();
 }
 
 bool RenderKernel::evaluate_shadow_ray(const Ray& ray, float t_max) const
@@ -536,4 +561,6 @@ bool RenderKernel::evaluate_shadow_ray(const Ray& ray, float t_max) const
         else
             return false;
     }
+
+    return false;
 }

@@ -56,7 +56,6 @@ struct Triangle
 			hit_info.u = u;
 			hit_info.v = v;
 
-			return false;
 			return true;
 		}
 		else // This means that there is a line intersection but not a ray intersection.
