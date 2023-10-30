@@ -11,7 +11,7 @@
 
 #include <sycl/sycl.hpp>
 
-#define RENDER_KERNEL_ITERATIONS 16
+#define RENDER_KERNEL_ITERATIONS 1
 #define SAMPLES_PER_KERNEL 1
 #define MAX_BOUNCES 5
 
@@ -81,8 +81,9 @@ public:
     SYCL_EXTERNAL Color cook_torrance_brdf(const SimpleMaterial& material, const Vector& to_light_direction, const Vector& view_direction, const Vector& surface_normal) const;
     SYCL_EXTERNAL Color cook_torrance_brdf_importance_sample(const SimpleMaterial& material, const Vector& view_direction, const Vector& surface_normal, Vector& output_direction, xorshift32_generator& random_number_generator) const;
 
-    SYCL_EXTERNAL bool intersect_scene(Ray& ray, HitInfo& closest_hit_info) const;
-    SYCL_EXTERNAL bool intersect_scene_bvh(Ray& ray, HitInfo& closest_hit_info) const;
+    bool intersect_scene(const Ray& ray, HitInfo& closest_hit_info) const;
+    bool intersect_scene_bvh(const Ray& ray, HitInfo& closest_hit_info) const;
+    bool INTERSECT_SCENE(const Ray& ray, HitInfo& hit_info)const ;
     Point sample_random_point_on_lights(xorshift32_generator& random_number_generator, float& pdf, LightSourceInformation& light_info) const;
     SYCL_EXTERNAL bool evaluate_shadow_ray(Ray& ray, float t_max) const;
 

@@ -15,6 +15,7 @@ ParsedOBJ Utils::parse_obj(const std::string& filepath)
     if (rapidobj_result.error)
     {
         std::cout << "There was an error loading the OBJ file: " << rapidobj_result.error.code.message() << std::endl;
+        std::cin.get();
 
         return parsed_obj;
     }

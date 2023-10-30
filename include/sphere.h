@@ -44,7 +44,8 @@ struct Sphere
             if (hit_info.t < 0.0f)
                 return false;
 
-            hit_info.normal_at_intersection = normalize((ray.origin + ray.direction * hit_info.t) - center);
+            hit_info.inter_point = ray.origin + ray.direction * hit_info.t;
+            hit_info.normal_at_intersection = normalize(hit_info.inter_point - center);
             hit_info.material_index = material_index;
 
             return true;

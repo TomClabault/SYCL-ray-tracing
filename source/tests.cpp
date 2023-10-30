@@ -157,6 +157,7 @@ void regression_tests()
     if (parsed_obj.error)
     {
         std::cout << "There was an error loading the OBJ file: " << parsed_obj.error.code.message() << std::endl;
+        std::cin.get();
 
         std::exit(-1);
     }

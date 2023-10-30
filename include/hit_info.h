@@ -9,7 +9,7 @@ struct HitInfo
     Vector normal_at_intersection;
 
     float t = -1.0f; //Distance along ray
-    float u, v; //Barycentric coordinates
+    float u = -1, v = -1; //Barycentric coordinates
 
     int material_index;
 };

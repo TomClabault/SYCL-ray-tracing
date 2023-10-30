@@ -79,8 +79,16 @@ int main(int argc, char* argv[])
 
     const int width = 1280;
     const int height = 720;
-
-    sycl::queue queue {sycl::cpu_selector_v};
+    try
+    {
+        sycl::queue queue{ sycl::default_selector_v };
+    }
+    catch (const sycl::exception& e)
+    {
+        std::cout << e.what() << std::endl;
+        std::cin.get();
+    }
+    sycl::queue queue {sycl::default_selector_v};
     std::cout << "Using " << queue.get_device().get_info<sycl::info::device::name>() << std::endl;
 
     Image image(width, height);
@@ -103,7 +111,7 @@ int main(int argc, char* argv[])
     sycl::buffer<Vector> bvh_plane_normals_buffer(BoundingVolume::PLANE_NORMALS, BVHConstants::PLANES_COUNT);
 
     int skysphere_width, skysphere_height;
-    std::vector<sycl::float4> skysphere_data = Utils::read_image_float("../SYCL-ray-tracing/data/Skyspheres/evening_road_01_puresky_8k.hdr", skysphere_width, skysphere_height);
+    std::vector<sycl::float4> skysphere_data = Utils::read_image_float("../SYCL-ray-tracing/data/Skyspheres/meadow_8k.hdr", skysphere_width, skysphere_height);
     sycl::image<2> skysphere_hdr(skysphere_data.data(),
                                  sycl::image_channel_order::rgba,
                                  sycl::image_channel_type::fp32,

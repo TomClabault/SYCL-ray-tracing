@@ -2,6 +2,8 @@
 
 #include "triangle.h"
 
+#define USE_BVH 0
+
 void branchlessONB(const Vector& n, Vector& b1, Vector& b2)
 {
     float sign = sycl::copysign(1.0f, n.z);
@@ -74,6 +76,9 @@ Ray RenderKernel::get_camera_ray(float x, float y) const
 
 void RenderKernel::ray_trace_pixel(int x, int y) const
 {
+    /*if (!(x == 185 && y == 720 - 178))
+        return;*/
+
     xorshift32_generator random_number_generator(x * y * SAMPLES_PER_KERNEL * (m_kernel_iteration + 1));
 
     Color final_color = Color(0.0f, 0.0f, 0.0f);
@@ -94,7 +99,7 @@ void RenderKernel::ray_trace_pixel(int x, int y) const
             if (next_ray_state == BOUNCE)
             {
                 HitInfo closest_hit_info;
-                bool intersection_found = intersect_scene(ray, closest_hit_info);
+                bool intersection_found = INTERSECT_SCENE(ray, closest_hit_info);
 
                 if (intersection_found)
                 {
@@ -139,7 +144,6 @@ void RenderKernel::ray_trace_pixel(int x, int y) const
                     // --------------------------------------- //
 
                     Vector random_bounce_direction;
-                    Point new_ray_origin = closest_hit_info.inter_point + closest_hit_info.normal_at_intersection * 1.0e-4f;
                     Color brdf = cook_torrance_brdf_importance_sample(material, -ray.direction, closest_hit_info.normal_at_intersection, random_bounce_direction, random_number_generator);
                     throughput *= brdf * sycl::max(0.0f, dot(random_bounce_direction, closest_hit_info.normal_at_intersection));
 
@@ -147,6 +151,7 @@ void RenderKernel::ray_trace_pixel(int x, int y) const
                         sample_color += material.emission;
                     sample_color += radiance * throughput;
 
+                    Point new_ray_origin = closest_hit_info.inter_point + closest_hit_info.normal_at_intersection * 1.0e-4f;
                     ray = Ray(new_ray_origin, random_bounce_direction);
                     next_ray_state = RayState::BOUNCE;
                 }
@@ -163,6 +168,7 @@ void RenderKernel::ray_trace_pixel(int x, int y) const
                 sycl::float4 skysphere_color_float4 = m_skysphere.read(coords, m_skysphere_sampler);
                 Color skysphere_color = Color(skysphere_color_float4.x(), skysphere_color_float4.y(), skysphere_color_float4.z());
 
+                m_out_stream << skysphere_color_float4 << sycl::endl;
                 sample_color += skysphere_color * throughput;
 
                 break;
@@ -349,14 +355,14 @@ inline Color RenderKernel::cook_torrance_brdf_importance_sample(const SimpleMate
     return brdf_color;
 }
 
-bool RenderKernel::intersect_scene(Ray& ray, HitInfo& closest_hit_info) const
+bool RenderKernel::intersect_scene(const Ray& ray, HitInfo& closest_hit_info) const
 {
     float closest_intersection_distance = -1.0f;
     closest_hit_info.t = -1.0f;
 
     for (int i = 0; i < m_triangle_buffer_access.size(); i++)
     {
-        const Triangle triangle = m_triangle_buffer_access[i];
+        const Triangle& triangle = m_triangle_buffer_access[i];//TODO added reference here that was breaking before
 
         HitInfo hit_info;
         if (triangle.intersect(ray, hit_info))
@@ -387,7 +393,7 @@ bool RenderKernel::intersect_scene(Ray& ray, HitInfo& closest_hit_info) const
     return closest_hit_info.t != -1.0f;
 }
 
-inline bool RenderKernel::intersect_scene_bvh(Ray& ray, HitInfo& closest_hit_info) const
+inline bool RenderKernel::intersect_scene_bvh(const Ray& ray, HitInfo& closest_hit_info) const
 {
     closest_hit_info.t = -1.0f;
 
@@ -460,6 +466,15 @@ inline bool RenderKernel::intersect_scene_bvh(Ray& ray, HitInfo& closest_hit_inf
     return closest_hit_info.t > -1.0f;
 }
 
+inline bool RenderKernel::INTERSECT_SCENE(const Ray& ray, HitInfo& hit_info) const
+{
+#if USE_BVH
+    return intersect_scene_bvh(ray, hit_info);
+#else
+    return intersect_scene(ray, hit_info);
+#endif
+}
+
 inline Point RenderKernel::sample_random_point_on_lights(xorshift32_generator& random_number_generator, float& pdf, LightSourceInformation& light_info) const
 {
     light_info.emissive_triangle_index = random_number_generator() * m_emissive_triangle_indices_buffer.size();
@@ -492,7 +507,7 @@ inline Point RenderKernel::sample_random_point_on_lights(xorshift32_generator& r
 bool RenderKernel::evaluate_shadow_ray(Ray& ray, float t_max) const
 {
     HitInfo hit_info;
-    intersect_scene(ray, hit_info);
+    INTERSECT_SCENE(ray, hit_info);
     if (hit_info.t + 1.0e-4f < t_max)
         //There is something in between the light and the origin of the ray
         return true;
