@@ -12,7 +12,7 @@
 #include <sycl/sycl.hpp>
 
 #define RENDER_KERNEL_ITERATIONS 1
-#define SAMPLES_PER_KERNEL 1
+#define SAMPLES_PER_KERNEL 2
 #define MAX_BOUNCES 5
 
 #define TILE_SIZE_X 8
@@ -73,7 +73,6 @@ public:
     Vector rotate_vector_around_normal(const Vector& normal, const Vector& random_dir_local_space) const;
     Vector uniform_direction_around_normal(const Vector& normal, float& pdf, xorshift32_generator& random_number_generator) const;
     Vector cosine_weighted_direction_around_normal(const Vector& normal, float& pdf, xorshift32_generator& random_number_generator) const;
-    Vector GGX_importance_sample_direction(const Vector& normal, float& pdf, xorshift32_generator& random_number_generator) const;
 
     SYCL_EXTERNAL void ray_trace_pixel(int x, int y) const;
 

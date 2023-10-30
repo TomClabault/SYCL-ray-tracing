@@ -111,7 +111,7 @@ int main(int argc, char* argv[])
     sycl::buffer<Vector> bvh_plane_normals_buffer(BoundingVolume::PLANE_NORMALS, BVHConstants::PLANES_COUNT);
 
     int skysphere_width, skysphere_height;
-    std::vector<sycl::float4> skysphere_data = Utils::read_image_float("../SYCL-ray-tracing/data/Skyspheres/meadow_8k.hdr", skysphere_width, skysphere_height);
+    std::vector<sycl::float4> skysphere_data = Utils::read_image_float("../SYCL-ray-tracing/data/Skyspheres/evening_road_01_puresky_8k.hdr", skysphere_width, skysphere_height);
     sycl::image<2> skysphere_hdr(skysphere_data.data(),
                                  sycl::image_channel_order::rgba,
                                  sycl::image_channel_type::fp32,

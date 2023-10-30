@@ -76,10 +76,13 @@ Ray RenderKernel::get_camera_ray(float x, float y) const
 
 void RenderKernel::ray_trace_pixel(int x, int y) const
 {
-    /*if (!(x == 185 && y == 720 - 178))
-        return;*/
-
     xorshift32_generator random_number_generator(x * y * SAMPLES_PER_KERNEL * (m_kernel_iteration + 1));
+    //Generating some numbers to make sure the generators of each thread spread apart
+    //If not doing this, the generator shows clear artifacts until it has generated
+    //a few numbers
+    random_number_generator();
+    random_number_generator();
+    random_number_generator();
 
     Color final_color = Color(0.0f, 0.0f, 0.0f);
     for (int sample = 0; sample < SAMPLES_PER_KERNEL; sample++)
@@ -168,7 +171,6 @@ void RenderKernel::ray_trace_pixel(int x, int y) const
                 sycl::float4 skysphere_color_float4 = m_skysphere.read(coords, m_skysphere_sampler);
                 Color skysphere_color = Color(skysphere_color_float4.x(), skysphere_color_float4.y(), skysphere_color_float4.z());
 
-                m_out_stream << skysphere_color_float4 << sycl::endl;
                 sample_color += skysphere_color * throughput;
 
                 break;
