@@ -76,6 +76,9 @@ Ray RenderKernel::get_camera_ray(float x, float y) const
 
 void RenderKernel::ray_trace_pixel(int x, int y) const
 {
+    /*if (!(x == 160 && y == 1))
+        return;*/
+
     xorshift32_generator random_number_generator(x * y * SAMPLES_PER_KERNEL * (m_kernel_iteration + 1));
     //Generating some numbers to make sure the generators of each thread spread apart
     //If not doing this, the generator shows clear artifacts until it has generated
@@ -97,6 +100,7 @@ void RenderKernel::ray_trace_pixel(int x, int y) const
         Color throughput = Color(1.0f, 1.0f, 1.0f);
         Color sample_color = Color(0.0f, 0.0f, 0.0f);
         RayState next_ray_state = RayState::BOUNCE;
+
         for (int bounce = 0; bounce < MAX_BOUNCES; bounce++)
         {
             if (next_ray_state == BOUNCE)
@@ -107,7 +111,11 @@ void RenderKernel::ray_trace_pixel(int x, int y) const
                 if (intersection_found)
                 {
                     int material_index = closest_hit_info.material_index;
+                    //m_out_stream << material_index << " ";
+                    if (material_index < 0 || material_index > 8)
+                        m_out_stream << "here " << material_index << ", "  << x << ", " << y << sycl::endl;
                     SimpleMaterial material = m_materials_buffer_access[material_index];
+                    material = SimpleMaterial();
 
                     // ------------------------------------- //
                     // ---------- Direct lighting ---------- //
@@ -125,37 +133,38 @@ void RenderKernel::ray_trace_pixel(int x, int y) const
                     bool in_shadow = evaluate_shadow_ray(shadow_ray, distance_to_light);
 
                     Color radiance = Color(0.0f, 0.0f, 0.0f);
-                    if (!in_shadow)
-                    {
-                        const SimpleMaterial& emissive_triangle_material = m_materials_buffer_access[m_materials_indices_buffer[light_source_info.emissive_triangle_index]];
+                    //if (!in_shadow)
+                    //{
+                    //    const SimpleMaterial& emissive_triangle_material = m_materials_buffer_access[m_materials_indices_buffer[light_source_info.emissive_triangle_index]];
 
-                        radiance = emissive_triangle_material.emission;
-                        //Cosine angle on the illuminated surface
-                        radiance *= sycl::max(dot(closest_hit_info.normal_at_intersection, shadow_ray_direction_normalized), 0.0f);
-                        //Cosine angle on the light surface
-                        radiance *= sycl::max(dot(light_source_info.light_source_normal, -shadow_ray_direction_normalized), 0.0f);
-                        //Falloff of the light intensity with the distance squared
-                        radiance /= distance_to_light * distance_to_light;
-                        //PDF: Probability of having chosen this point on this exact light source
-                        radiance /= light_sample_pdf;
-                        //BRDF of the illuminated surface
-                        radiance *= cook_torrance_brdf(material, shadow_ray.direction, -ray.direction, closest_hit_info.normal_at_intersection);
-                    }
+                    //    radiance = emissive_triangle_material.emission;
+                    //    //Cosine angle on the illuminated surface
+                    //    radiance *= sycl::max(dot(closest_hit_info.normal_at_intersection, shadow_ray_direction_normalized), 0.0f);
+                    //    //Cosine angle on the light surface
+                    //    radiance *= sycl::max(dot(light_source_info.light_source_normal, -shadow_ray_direction_normalized), 0.0f);
+                    //    //Falloff of the light intensity with the distance squared
+                    //    radiance /= distance_to_light * distance_to_light;
+                    //    //PDF: Probability of having chosen this point on this exact light source
+                    //    radiance /= light_sample_pdf;
+                    //    //BRDF of the illuminated surface
+                    //    radiance *= cook_torrance_brdf(material, shadow_ray.direction, -ray.direction, closest_hit_info.normal_at_intersection);
+                    //}
 
                     // --------------------------------------- //
                     // ---------- Indirect lighting ---------- //
                     // --------------------------------------- //
 
-                    Vector random_bounce_direction;
+                    /*Vector random_bounce_direction;
                     Color brdf = cook_torrance_brdf_importance_sample(material, -ray.direction, closest_hit_info.normal_at_intersection, random_bounce_direction, random_number_generator);
-                    throughput *= brdf * sycl::max(0.0f, dot(random_bounce_direction, closest_hit_info.normal_at_intersection));
-
+                    throughput *= brdf * sycl::max(0.0f, dot(random_bounce_direction, closest_hit_info.normal_at_intersection));*/
+                    
                     if (bounce == 0)
                         sample_color += material.emission;
+                    //sample_color += Color(1.0f) * Color(1.0f, 0.0f, 0.0f);
                     sample_color += radiance * throughput;
 
                     Point new_ray_origin = closest_hit_info.inter_point + closest_hit_info.normal_at_intersection * 1.0e-4f;
-                    ray = Ray(new_ray_origin, random_bounce_direction);
+                    ray = Ray(new_ray_origin, Vector(1.0f, 0.0f, 0.0f));
                     next_ray_state = RayState::BOUNCE;
                 }
                 else
@@ -163,15 +172,15 @@ void RenderKernel::ray_trace_pixel(int x, int y) const
             }
             else if (next_ray_state == MISSED)
             {
-                float u, v;
+                /*float u, v;
                 u = 0.5f + sycl::atan2(ray.direction.z, ray.direction.x) / (2.0f * (float)M_PI);
                 v = 0.5f + sycl::asin(ray.direction.y) / (float)M_PI;
 
                 sycl::int2 coords(v * m_skysphere_height, u * m_skysphere_width);
                 sycl::float4 skysphere_color_float4 = m_skysphere.read(coords, m_skysphere_sampler);
-                Color skysphere_color = Color(skysphere_color_float4.x(), skysphere_color_float4.y(), skysphere_color_float4.z());
+                Color skysphere_color = Color(skysphere_color_float4.x(), skysphere_color_float4.y(), skysphere_color_float4.z());*/
 
-                sample_color += skysphere_color * throughput;
+                sample_color += Color(2.0f);// skysphere_color* throughput;
 
                 break;
             }
@@ -360,20 +369,25 @@ inline Color RenderKernel::cook_torrance_brdf_importance_sample(const SimpleMate
 bool RenderKernel::intersect_scene(const Ray& ray, HitInfo& closest_hit_info) const
 {
     float closest_intersection_distance = -1.0f;
-    closest_hit_info.t = -1.0f;
+    bool inter_found = false;
 
     for (int i = 0; i < m_triangle_buffer_access.size(); i++)
     {
-        const Triangle& triangle = m_triangle_buffer_access[i];//TODO added reference here that was breaking before
+        const Triangle& triangle = m_triangle_buffer_access[i];
 
         HitInfo hit_info;
-        if (triangle.intersect(ray, hit_info))
+        triangle.intersect(ray, hit_info);
+        if (hit_info.t > 0)
         {
-            if (hit_info.t < closest_intersection_distance || closest_intersection_distance == -1.0f)
+            hit_info.material_index = m_materials_indices_buffer[i];
+            //m_out_stream << hit_info << sycl::endl;
+            if (hit_info.t < closest_intersection_distance || !inter_found)
             {
                 hit_info.material_index = m_materials_indices_buffer[i];
                 closest_intersection_distance = hit_info.t;
                 closest_hit_info = hit_info;
+
+                inter_found = true;
             }
         }
     }
@@ -381,18 +395,21 @@ bool RenderKernel::intersect_scene(const Ray& ray, HitInfo& closest_hit_info) co
     for (int i = 0; i < m_sphere_buffer.size(); i++)
     {
         const Sphere& sphere = m_sphere_buffer[i];
+
         HitInfo hit_info;
         if (sphere.intersect(ray, hit_info))
         {
-            if (hit_info.t < closest_intersection_distance || closest_intersection_distance == -1.0f)
+            if (hit_info.t < closest_intersection_distance || !inter_found)
             {
                 closest_intersection_distance = hit_info.t;
                 closest_hit_info = hit_info;
+
+                inter_found = true;
             }
         }
     }
 
-    return closest_hit_info.t != -1.0f;
+    return inter_found;// closest_hit_info.t != -1.0f;
 }
 
 inline bool RenderKernel::intersect_scene_bvh(const Ray& ray, HitInfo& closest_hit_info) const
@@ -506,13 +523,17 @@ inline Point RenderKernel::sample_random_point_on_lights(xorshift32_generator& r
     return random_point_on_triangle;
 }
 
-bool RenderKernel::evaluate_shadow_ray(Ray& ray, float t_max) const
+bool RenderKernel::evaluate_shadow_ray(const Ray& ray, float t_max) const
 {
     HitInfo hit_info;
-    INTERSECT_SCENE(ray, hit_info);
-    if (hit_info.t + 1.0e-4f < t_max)
-        //There is something in between the light and the origin of the ray
-        return true;
-    else
-        return false;
+    bool inter_found = INTERSECT_SCENE(ray, hit_info);
+
+    if (inter_found)
+    {
+        if (hit_info.t + 1.0e-4f < t_max)
+            //There is something in between the light and the origin of the ray
+            return true;
+        else
+            return false;
+    }
 }

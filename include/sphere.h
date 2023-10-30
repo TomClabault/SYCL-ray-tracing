@@ -8,7 +8,7 @@ struct Sphere
 {
     Sphere(Point center, float radius, int material_index);
 
-    inline bool Sphere::intersect(const Ray &ray, HitInfo& hit_info) const
+    inline bool intersect(const Ray &ray, HitInfo& hit_info) const
     {
         Vector L = ray.origin - center;
 

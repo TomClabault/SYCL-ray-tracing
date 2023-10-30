@@ -38,7 +38,7 @@ int dichotomie(std::vector<float> bins, float random)
 
 int main(int argc, char* argv[])
 {
-    regression_tests();
+    //regression_tests();
     std::cout << std::endl;
 
     std::vector<float> bins {4, 5, 8, 2, 1};
@@ -140,7 +140,7 @@ int main(int argc, char* argv[])
                 const auto local_range = sycl::range<2>(TILE_SIZE_X, TILE_SIZE_Y);
                 const auto coordinates_indices = sycl::nd_range<2>(global_range, local_range);
 
-                sycl::stream debug_out_stream(1024, 256, handler);
+                sycl::stream debug_out_stream(16384, 256, handler);
 
                 auto render_kernel = RenderKernel(width, height, kernel_iteration,
                     image_buffer_access,
@@ -150,8 +150,8 @@ int main(int argc, char* argv[])
                     materials_indices_buffer_access,
                     sphere_buffer_access,
                     bvh_nodes_access,
-                    skysphere_accessor,
-                    skysphere_sampler,
+                    /*skysphere_accessor,
+                    skysphere_sampler,*/
                     debug_out_stream);
                 render_kernel.set_camera(Camera(45, Translation(0, 1, 3.5)));
                 render_kernel.set_bvh_plane_normals(bvh_plane_normals);
@@ -174,7 +174,7 @@ int main(int argc, char* argv[])
     auto stop = std::chrono::high_resolution_clock::now();
     std::cout << std::chrono::duration_cast<std::chrono::milliseconds>(stop - start).count() << "ms" << std::endl;
 
-    image_buffer.get_access<sycl::access::mode::read>();
+    image_buffer.get_host_access();
 
     write_image_png(image, "../TP_RT_output.png");
 

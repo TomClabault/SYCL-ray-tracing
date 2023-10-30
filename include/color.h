@@ -8,13 +8,6 @@
 
 #include <iostream>
 
-//! \addtogroup image
-///@{
-
-//! \file
-//! manipulation de couleurs
-
-//! representation d'une couleur (rgba) transparente ou opaque.
 struct Color
 {
     //! constructeur par defaut.
@@ -26,15 +19,6 @@ struct Color
     
     //! cree une couleur avec les memes composantes que color, mais remplace sa composante alpha (color.r, color.g, color.b, alpha).
     Color( const Color& color, const float alpha ) : r(color.r), g(color.g), b(color.b), a(alpha) {}  // remplace alpha.
-
-//    SYCL_EXTERNAL Color& operator=(const Vector& vec);
-//    SYCL_EXTERNAL Color& operator+=(const Color& other);
-//    SYCL_EXTERNAL Color& operator*=(const Color& other);
-//    SYCL_EXTERNAL Color& operator*=(float k);
-//    SYCL_EXTERNAL Color& operator/=(const float k);
-
-//    float power( ) const;
-//    float max( ) const;
 
     inline Color& operator=(const Vector& vec)
     {
@@ -182,32 +166,6 @@ inline Color pow(const Color &col, float k)
 {
     return Color(std::pow(col.r, k), std::pow(col.g, k), std::pow(col.b, k), col.a);
 }
-
-////! utilitaire. renvoie une couleur noire.
-//Color Black( );
-////! utilitaire. renvoie une couleur blanche.
-//Color White( );
-////! utilitaire. renvoie une couleur rouge.
-//Color Red( );
-////! utilitaire. renvoie une couleur verte.
-//Color Green( );
-////! utilitaire. renvoie une couleur bleue.
-//Color Blue( );
-////! utilitaire. renvoie une couleur jaune.
-//Color Yellow( );
-
-//SYCL_EXTERNAL Color exp(const Color& col);
-//SYCL_EXTERNAL Color pow(const Color& col, float k);
-
-//SYCL_EXTERNAL Color operator+ ( const Color& a, const Color& b );
-//SYCL_EXTERNAL Color operator- ( const Color& a, const Color& b );
-//SYCL_EXTERNAL Color operator- ( const Color& c );
-//SYCL_EXTERNAL Color operator* ( const Color& a, const Color& b );
-//SYCL_EXTERNAL Color operator* ( const Color& c, const float k );
-//SYCL_EXTERNAL Color operator* ( const float k, const Color& c );
-//SYCL_EXTERNAL Color operator/ ( const Color& a, const Color& b );
-//SYCL_EXTERNAL Color operator/ ( const float k, const Color& c );
-//SYCL_EXTERNAL Color operator/ ( const Color& c, const float k );
 
 inline const sycl::stream& operator << (const sycl::stream& os, const Color& color)
 {

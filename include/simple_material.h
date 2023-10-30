@@ -5,11 +5,11 @@
 
 struct SimpleMaterial
 {
-    Color emission;
-    Color diffuse;
+    Color emission = Color(0.0f, 0.0f, 0.0f);
+    Color diffuse = Color(1.0f, 0.2f, 0.7f);
 
-    float metalness;
-    float roughness;
+    float metalness = 0.0f;
+    float roughness = 0.5f;
 };
 
 #endif

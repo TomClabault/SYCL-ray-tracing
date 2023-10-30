@@ -11,7 +11,14 @@ struct HitInfo
     float t = -1.0f; //Distance along ray
     float u = -1, v = -1; //Barycentric coordinates
 
-    int material_index;
+    int material_index = -1;
 };
+
+inline const sycl::stream operator << (const sycl::stream & os, const HitInfo & hit_info)
+{
+    os << "[" << "inter p: " << hit_info.inter_point << ", " << "normal: " << hit_info.normal_at_intersection << ", "  << "mat idx: " << hit_info.material_index << ", t: " << hit_info.t << "]";
+
+    return os;
+}
 
 #endif

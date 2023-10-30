@@ -26,7 +26,7 @@ public:
     {
         SYCL_EXTERNAL bool intersect_volume(const std::array<float, BVHConstants::PLANES_COUNT>& denoms, const std::array<float, BVHConstants::PLANES_COUNT>& numers) const;
         //SYCL_EXTERNAL bool intersect_volume(const sycl::marray<float, BVHConstants::PLANES_COUNT>& denoms, const sycl::marray<float, BVHConstants::PLANES_COUNT>& numers) const;
-        inline bool FlattenedBVH::FlattenedNode::intersect_volume(const sycl::marray<float, BVHConstants::PLANES_COUNT>& denoms, const sycl::marray<float, BVHConstants::PLANES_COUNT>& numers) const
+        inline bool intersect_volume(const sycl::marray<float, BVHConstants::PLANES_COUNT>& denoms, const sycl::marray<float, BVHConstants::PLANES_COUNT>& numers) const
         {
             return BoundingVolume::intersect(d_near, d_far, denoms, numers);
         }
