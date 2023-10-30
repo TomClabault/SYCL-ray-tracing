@@ -84,6 +84,7 @@ void RenderKernel::ray_trace_pixel(int x, int y) const
     random_number_generator();
     random_number_generator();*/
 
+    Color debug_final_color;
     Color final_color = Color(0.0f, 0.0f, 0.0f);
     for (int sample = 0; sample < SAMPLES_PER_KERNEL; sample++)
     {
@@ -107,12 +108,9 @@ void RenderKernel::ray_trace_pixel(int x, int y) const
 
                 if (intersection_found)
                 {
-                    if (x == 0 && y == 0)
-                        m_out_stream << closest_hit_info << sycl::endl;
-
                     int material_index = closest_hit_info.material_index;
                     SimpleMaterial material = m_materials_buffer_access[material_index];
-                    sample_color = material.diffuse;
+                    sample_color += material.diffuse * throughput;
 
                     // ------------------------------------- //
                     // ---------- Direct lighting ---------- //
@@ -151,17 +149,18 @@ void RenderKernel::ray_trace_pixel(int x, int y) const
                     //// ---------- Indirect lighting ---------- //
                     //// --------------------------------------- //
 
+                    float pdf;
+                    Vector random_bounce_direction = normalize(Vector(1, 2, 3));// uniform_direction_around_normal(closest_hit_info.normal_at_intersection, pdf, random_number_generator);
                     ///*Vector random_bounce_direction;
                     //Color brdf = cook_torrance_brdf_importance_sample(material, -ray.direction, closest_hit_info.normal_at_intersection, random_bounce_direction, random_number_generator);
                     //throughput *= brdf * sycl::max(0.0f, dot(random_bounce_direction, closest_hit_info.normal_at_intersection));*/
+                    throughput *= material.diffuse / M_PI * sycl::max(0.0f, dot(random_bounce_direction, closest_hit_info.normal_at_intersection));
                     //
                     //if (bounce == 0)
                     //    sample_color += material.emission;
                     ////sample_color += Color(1.0f) * Color(1.0f, 0.0f, 0.0f);
                     //sample_color += radiance * throughput;
 
-                    float pdf;
-                    Vector random_bounce_direction = normalize(Vector(1, 2, 3));// uniform_direction_around_normal(closest_hit_info.normal_at_intersection, pdf, random_number_generator);
                     Point new_ray_origin = closest_hit_info.inter_point + closest_hit_info.normal_at_intersection * 1.0e-4f;
                     ray = Ray(new_ray_origin, random_bounce_direction);
                     next_ray_state = RayState::BOUNCE;
@@ -181,8 +180,7 @@ void RenderKernel::ray_trace_pixel(int x, int y) const
 
                 sample_color += skysphere_color * throughput;*/
 
-                m_out_stream << "here" << sycl::endl;
-                sample_color = Color();
+                //sample_color = Color();
 
                 break;
             }
