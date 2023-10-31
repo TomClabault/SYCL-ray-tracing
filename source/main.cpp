@@ -38,8 +38,7 @@ int dichotomie(std::vector<float> bins, float random)
 
 int main(int argc, char* argv[])
 {
-    //regression_tests();
-    std::cout << std::endl;
+    regression_tests();
 
     std::vector<float> bins {4, 5, 8, 2, 1};
     std::vector<float> bins2 (bins.size());
@@ -79,7 +78,7 @@ int main(int argc, char* argv[])
 
     const int width = 1280;
     const int height = 720;
-    sycl::queue queue {sycl::default_selector_v};
+    sycl::queue queue {sycl::cpu_selector_v};
     std::cout << "Using " << queue.get_device().get_info<sycl::info::device::name>() << std::endl;
 
     Image image(width, height);
@@ -95,7 +94,7 @@ int main(int argc, char* argv[])
     sycl::buffer<Color> image_buffer(image.color_data(), image.width() * image.height());
     sycl::buffer<Triangle> triangle_buffer(parsed_obj.triangles.data(), parsed_obj.triangles.size());
     sycl::buffer<SimpleMaterial> materials_buffer(parsed_obj.materials.data(), parsed_obj.materials.size());
-    //sycl::buffer<int> emissive_triangle_indices_buffer(parsed_obj.emissive_triangle_indices.data(), parsed_obj.emissive_triangle_indices.size());
+    sycl::buffer<int> emissive_triangle_indices_buffer(parsed_obj.emissive_triangle_indices.data(), parsed_obj.emissive_triangle_indices.size());
     sycl::buffer<int> materials_indices_buffer(parsed_obj.material_indices.data(), parsed_obj.material_indices.size());
     //sycl::buffer<Sphere> sphere_buffer(spheres.data(), spheres.size());
     //sycl::buffer<FlattenedBVH::FlattenedNode> bvh_nodes_buffer(flat_bvh.get_nodes().data(), flat_bvh.get_nodes().size());
@@ -119,7 +118,7 @@ int main(int argc, char* argv[])
                 auto image_buffer_access = image_buffer.get_access<sycl::access::mode::write>(handler);
                 auto triangle_buffer_access = triangle_buffer.get_access<sycl::access::mode::read>(handler);
                 auto materials_buffer_access = materials_buffer.get_access<sycl::access::mode::read>(handler);
-                //auto emissive_triangle_indices_buffer_access = emissive_triangle_indices_buffer.get_access<sycl::access::mode::read>(handler);
+                auto emissive_triangle_indices_buffer_access = emissive_triangle_indices_buffer.get_access<sycl::access::mode::read>(handler);
                 auto materials_indices_buffer_access = materials_indices_buffer.get_access<sycl::access::mode::read>(handler);
                 //auto sphere_buffer_access = sphere_buffer.get_access<sycl::access::mode::read>(handler);
                 //auto bvh_nodes_access = bvh_nodes_buffer.get_access<sycl::access::mode::read>(handler);
@@ -137,7 +136,7 @@ int main(int argc, char* argv[])
                     image_buffer_access,
                     triangle_buffer_access,
                     materials_buffer_access,
-                    //emissive_triangle_indices_buffer_access,
+                    emissive_triangle_indices_buffer_access,
                     materials_indices_buffer_access,
                     //sphere_buffer_access,
                     //bvh_nodes_access,

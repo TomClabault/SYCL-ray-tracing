@@ -15,9 +15,8 @@ struct Triangle
 	SYCL_EXTERNAL Point bbox_centroid() const;
 
 	//From https://en.wikipedia.org/wiki/M%C3%B6ller%E2%80%93Trumbore_intersection_algorithm
-	inline bool intersect(const Ray& ray, HitInfo& hit_info) const
+	inline bool intersect(const Ray ray, HitInfo* hit_info) const
 	{
-
 		const float EPSILON = 0.0000001f;
 		Vector edge1, edge2, h, s, q;
 		float a, f, u, v;
@@ -48,13 +47,13 @@ struct Triangle
 
 		if (t > EPSILON) // ray intersection
 		{
-			hit_info.inter_point = ray.origin + ray.direction * t;
-			hit_info.normal_at_intersection = normalize(cross(edge1, edge2));
+			hit_info->inter_point = ray.origin + ray.direction * t;
+			hit_info->normal_at_intersection = normalize(cross(edge1, edge2));
 
-			hit_info.t = t;
+			hit_info->t = t;
 
-			hit_info.u = u;
-			hit_info.v = v;
+			hit_info->u = u;
+			hit_info->v = v;
 
 			return true;
 		}

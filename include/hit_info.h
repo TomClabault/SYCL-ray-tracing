@@ -5,8 +5,8 @@
 
 struct HitInfo
 {
-    Point inter_point;
-    Vector normal_at_intersection;
+    Point inter_point = Point(0, 0, 0);
+    Vector normal_at_intersection = Vector(1, 0, 0);
 
     float t = -1.0f; //Distance along ray
     float u = -1, v = -1; //Barycentric coordinates

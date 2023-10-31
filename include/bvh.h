@@ -153,7 +153,7 @@ public:
                     const Triangle& triangle = triangles_geometry[triangle_id];
 
                     HitInfo local_hit_info;
-                    if (triangle.intersect(ray, local_hit_info))
+                    if (triangle.intersect(ray, &local_hit_info))
                         if (local_hit_info.t < hit_info.t || hit_info.t == -1)
                             hit_info = local_hit_info;
                 }

@@ -186,4 +186,6 @@ void regression_tests()
     BVH bvh(&triangle_host_buffer);
     test_bvh(bvh);
     test_flattened_bvh(bvh);
+
+    std::cout << std::endl;
 }

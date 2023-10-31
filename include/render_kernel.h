@@ -13,7 +13,7 @@
 
 #define RENDER_KERNEL_ITERATIONS 1
 #define SAMPLES_PER_KERNEL 64
-#define MAX_BOUNCES 5
+#define MAX_BOUNCES 2
 
 #define TILE_SIZE_X 8
 #define TILE_SIZE_Y TILE_SIZE_X
@@ -31,7 +31,7 @@ public:
                  sycl::accessor<Color, 1, sycl::access::mode::write, sycl::access::target::device> frame_buffer_accessor,
                  sycl::accessor<Triangle, 1, sycl::access::mode::read, sycl::access::target::device> triangle_buffer_accessor,
                  sycl::accessor<SimpleMaterial, 1, sycl::access::mode::read, sycl::access::target::device> materials_buffer_accessor,
-                 //sycl::accessor<int, 1, sycl::access::mode::read, sycl::access::target::device> emissive_triangle_indices_buffer_accessor,
+                 sycl::accessor<int, 1, sycl::access::mode::read, sycl::access::target::device> emissive_triangle_indices_buffer_accessor,
                  sycl::accessor<int, 1, sycl::access::mode::read, sycl::access::target::device> materials_indices_buffer_accessor,
                  //sycl::accessor<Sphere, 1, sycl::access::mode::read, sycl::access::target::device> analytic_spheres_buffer,
                  //sycl::accessor<FlattenedBVH::FlattenedNode, 1, sycl::access::mode::read, sycl::access::target::device> bvh_nodes,
@@ -42,7 +42,7 @@ public:
         m_frame_buffer_access(frame_buffer_accessor),
         m_triangle_buffer_access(triangle_buffer_accessor),
         m_materials_buffer_access(materials_buffer_accessor),
-        //m_emissive_triangle_indices_buffer(emissive_triangle_indices_buffer_accessor),
+        m_emissive_triangle_indices_buffer(emissive_triangle_indices_buffer_accessor),
         m_materials_indices_buffer(materials_indices_buffer_accessor),
         //m_sphere_buffer(analytic_spheres_buffer),
         //m_bvh_nodes(bvh_nodes),
@@ -59,7 +59,7 @@ public:
         BVH_PLANE_NORMALS = plane_normals_accessor;
     }*/
 
-    inline void operator()(const sycl::nd_item<2>& coordinates) const
+    void operator()(const sycl::nd_item<2>& coordinates) const
     {
         int x = coordinates.get_global_id(0);
         int y = coordinates.get_global_id(1);
@@ -75,15 +75,15 @@ public:
 
     SYCL_EXTERNAL void ray_trace_pixel(int x, int y) const;
 
-    SYCL_EXTERNAL Color lambertian_brdf(const SimpleMaterial& material, const Vector& to_light_direction, const Vector& view_direction, const Vector& surface_normal) const;
+    //SYCL_EXTERNAL Color lambertian_brdf(const SimpleMaterial& material, const Vector& to_light_direction, const Vector& view_direction, const Vector& surface_normal) const;
     SYCL_EXTERNAL Color cook_torrance_brdf(const SimpleMaterial& material, const Vector& to_light_direction, const Vector& view_direction, const Vector& surface_normal) const;
     SYCL_EXTERNAL Color cook_torrance_brdf_importance_sample(const SimpleMaterial& material, const Vector& view_direction, const Vector& surface_normal, Vector& output_direction, xorshift32_generator& random_number_generator) const;
 
-    bool intersect_scene(const Ray& ray, HitInfo& closest_hit_info) const;
-    bool intersect_scene_bvh(const Ray& ray, HitInfo& closest_hit_info) const;
-    bool INTERSECT_SCENE(const Ray& ray, HitInfo& hit_info)const ;
+    //bool intersect_scene(const Ray ray, HitInfo* closest_hit_info) const;
+    //bool intersect_scene_bvh(const Ray ray, HitInfo* closest_hit_info) const;
+    bool INTERSECT_SCENE(Ray ray, HitInfo* hit_info) const;
     Point sample_random_point_on_lights(xorshift32_generator& random_number_generator, float& pdf, LightSourceInformation& light_info) const;
-    SYCL_EXTERNAL bool evaluate_shadow_ray(const Ray& ray, float t_max) const;
+    bool evaluate_shadow_ray(Ray ray, float t_max) const;
 
 private:
     int m_width, m_height;
@@ -93,7 +93,7 @@ private:
 
     sycl::accessor<Triangle, 1, sycl::access::mode::read, sycl::access::target::device> m_triangle_buffer_access;
     sycl::accessor<SimpleMaterial, 1, sycl::access::mode::read, sycl::access::target::device> m_materials_buffer_access;
-    //sycl::accessor<int, 1, sycl::access::mode::read, sycl::access::target::device> m_emissive_triangle_indices_buffer;
+    sycl::accessor<int, 1, sycl::access::mode::read, sycl::access::target::device> m_emissive_triangle_indices_buffer;
     sycl::accessor<int, 1, sycl::access::mode::read, sycl::access::target::device> m_materials_indices_buffer;
 
     //sycl::accessor<Sphere, 1, sycl::access::mode::read, sycl::access::target::device> m_sphere_buffer;

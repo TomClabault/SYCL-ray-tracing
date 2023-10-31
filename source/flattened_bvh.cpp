@@ -38,7 +38,7 @@ bool FlattenedBVH::intersect(const Ray& ray, HitInfo& hit_info, const std::vecto
                     int triangle_index = node.triangles_indices[i];
 
                     HitInfo local_hit_info;
-                    if (triangles[triangle_index].intersect(ray, local_hit_info))
+                    if (triangles[triangle_index].intersect(ray, &local_hit_info))
                     {
                         if (closest_intersection_distance > local_hit_info.t || closest_intersection_distance == -1)
                         {
