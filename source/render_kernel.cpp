@@ -444,7 +444,8 @@ inline bool RenderKernel::intersect_scene_bvh(const Ray ray, HitInfo* closest_hi
         numers[i] = dot(BVH_PLANE_NORMALS[i], Vector(ray.origin));
     }
 
-    float closest_intersection_distance = -1;
+    bool inter_found = false;
+    float closest_intersection_distance = 1000000.0f;
     while (!stack.empty())
     {
         int node_index = stack.pop();
@@ -457,15 +458,28 @@ inline bool RenderKernel::intersect_scene_bvh(const Ray ray, HitInfo* closest_hi
                 for (int i = 0; i < node.nb_triangles; i++)
                 {
                     int triangle_index = node.triangles_indices[i];
+                    const Triangle& triangle = m_triangle_buffer_access[triangle_index];
 
                     HitInfo local_hit_info;
-                    if (m_triangle_buffer_access[triangle_index].intersect(ray, &local_hit_info))
+                    if (triangle.intersect(ray, &local_hit_info))
                     {
-                        if (closest_intersection_distance > local_hit_info.t || closest_intersection_distance == -1)
+                        if (local_hit_info.t > 0 && (closest_intersection_distance > local_hit_info.t || !inter_found))
                         {
+                            //closest_intersection_distance = local_hit_info.t;
+                            //closest_hit_info->t = local_hit_info.t;
+                            //closest_hit_info->inter_point = local_hit_info.inter_point;
+                            //closest_hit_info->normal_at_intersection = local_hit_info.normal_at_intersection;
+                            ////*closest_hit_info = local_hit_info;
+                            //closest_hit_info->material_index = m_materials_indices_buffer[triangle_index];
+
+                            local_hit_info.material_index = m_materials_indices_buffer[i];
                             closest_intersection_distance = local_hit_info.t;
                             *closest_hit_info = local_hit_info;
-                            closest_hit_info->material_index = m_materials_indices_buffer[triangle_index];
+
+                            if (local_hit_info.t < 0)
+                                m_out_stream << "here" << sycl::endl;
+
+                            inter_found = true;
                         }
                     }
                 }
@@ -498,8 +512,7 @@ inline bool RenderKernel::intersect_scene_bvh(const Ray ray, HitInfo* closest_hi
         }
     }*/
 
-    return closest_hit_info->t > -1.0f;
-    return true;
+    return inter_found;
 }
 
 bool RenderKernel::INTERSECT_SCENE(Ray ray, HitInfo* hit_info) const

@@ -17,7 +17,7 @@ struct Triangle
 	//From https://en.wikipedia.org/wiki/M%C3%B6ller%E2%80%93Trumbore_intersection_algorithm
 	inline bool intersect(const Ray ray, HitInfo* hit_info) const
 	{
-		const float EPSILON = 0.0000001f;
+		const float EPSILON = 0.000001f;
 		Vector edge1, edge2, h, s, q;
 		float a, f, u, v;
 		edge1 = m_b - m_a;
