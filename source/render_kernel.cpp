@@ -90,8 +90,8 @@ void RenderKernel::ray_trace_pixel(int x, int y) const
     for (int sample = 0; sample < SAMPLES_PER_KERNEL; sample++)
     {
         //Jittered around the center
-        float x_jittered = (x + 0.5f);// +random_number_generator() - 1.0f;
-        float y_jittered = (y + 0.5f);// +random_number_generator() - 1.0f;
+        float x_jittered = (x + 0.5f) + random_number_generator() - 1.0f;
+        float y_jittered = (y + 0.5f) + random_number_generator() - 1.0f;
 
         //TODO area sampling triangles
         Ray ray = get_camera_ray(x_jittered, y_jittered);
@@ -130,7 +130,7 @@ void RenderKernel::ray_trace_pixel(int x, int y) const
 
                     bool inter_found = false;
                     float closest_intersection_distance = 1000000.0f;
-                    HitInfo hit_info;
+                    HitInfo shadow_hit_info;
                     for (int i = 0; i < m_triangle_buffer_access.size(); i++)
                     {
                         const Triangle triangle = m_triangle_buffer_access[i];
@@ -141,15 +141,15 @@ void RenderKernel::ray_trace_pixel(int x, int y) const
                             if (local_hit_info.t < closest_intersection_distance || !inter_found)
                             {
                                 closest_intersection_distance = local_hit_info.t;
-                                hit_info = local_hit_info; //THIS LINE RIGHT HERE
-                                hit_info.material_index = m_materials_indices_buffer[i];
+                                shadow_hit_info = local_hit_info; //THIS LINE RIGHT HERE
+                                shadow_hit_info.material_index = m_materials_indices_buffer[i];
 
                                 inter_found = true;
                             }
                         }
                     }
 
-                    in_shadow = inter_found && (hit_info.t + 1.0e-4f < distance_to_light);
+                    in_shadow = inter_found && (shadow_hit_info.t + 1.0e-4f < distance_to_light);
 
                     Color radiance = Color(0.0f, 0.0f, 0.0f);
                     if (!in_shadow)
@@ -176,7 +176,6 @@ void RenderKernel::ray_trace_pixel(int x, int y) const
                     Vector random_bounce_direction;
                     Color brdf = cook_torrance_brdf_importance_sample(material, -ray.direction, closest_hit_info.normal_at_intersection, random_bounce_direction, random_number_generator);
                     throughput *= brdf * sycl::max(0.0f, dot(random_bounce_direction, closest_hit_info.normal_at_intersection));
-                    throughput *= material.diffuse / M_PI * sycl::max(0.0f, dot(random_bounce_direction, closest_hit_info.normal_at_intersection));
 
                     if (bounce == 0)
                         sample_color += material.emission;
@@ -216,22 +215,22 @@ void RenderKernel::ray_trace_pixel(int x, int y) const
     final_color.a = 0.0f;
     m_frame_buffer_access[y * m_width + x] += final_color;
 
-    //if (m_kernel_iteration == RENDER_KERNEL_ITERATIONS - 1)
-    //{
-    //    //Last iteration, computing the average
-    //    m_frame_buffer_access[y * m_width + x] /= RENDER_KERNEL_ITERATIONS;
+    if (m_kernel_iteration == RENDER_KERNEL_ITERATIONS - 1)
+    {
+        //Last iteration, computing the average
+        m_frame_buffer_access[y * m_width + x] /= RENDER_KERNEL_ITERATIONS;
 
-    //    const float gamma = 2.2f;
-    //    const float exposure = 2.5f;
-    //    Color hdrColor = m_frame_buffer_access[y * m_width + x];
+        const float gamma = 2.2f;
+        const float exposure = 2.5f;
+        Color hdrColor = m_frame_buffer_access[y * m_width + x];
 
-    //    //Exposure tone mapping
-    //    Color tone_mapped = Color(1.0f, 1.0f, 1.0f) - exp(-hdrColor * exposure);
-    //    // Gamma correction
-    //    Color gamma_corrected = pow(tone_mapped, 1.0f / gamma);
+        //Exposure tone mapping
+        Color tone_mapped = Color(1.0f, 1.0f, 1.0f) - exp(-hdrColor * exposure);
+        // Gamma correction
+        Color gamma_corrected = pow(tone_mapped, 1.0f / gamma);
 
-    //    m_frame_buffer_access[y * m_width + x] = gamma_corrected;
-    //}
+        m_frame_buffer_access[y * m_width + x] = gamma_corrected;
+    }
 }
 
 Color RenderKernel::lambertian_brdf(const SimpleMaterial& material, const Vector& to_light_direction, const Vector& view_direction, const Vector& surface_normal) const
