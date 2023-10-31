@@ -5,6 +5,20 @@
 
 struct HitInfo
 {
+    HitInfo& operator=(const HitInfo& other)
+    {
+        inter_point = other.inter_point;
+        normal_at_intersection = other.normal_at_intersection;
+
+        t = other.t;
+        u = other.u;
+        v = other.v;
+
+        material_index = other.material_index;
+
+        return *this;
+    }
+
     Point inter_point = Point(0, 0, 0);
     Vector normal_at_intersection = Vector(1, 0, 0);
 

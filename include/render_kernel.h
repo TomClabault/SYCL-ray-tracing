@@ -34,18 +34,19 @@ public:
                  sycl::accessor<int, 1, sycl::access::mode::read, sycl::access::target::device> emissive_triangle_indices_buffer_accessor,
                  sycl::accessor<int, 1, sycl::access::mode::read, sycl::access::target::device> materials_indices_buffer_accessor,
                  //sycl::accessor<Sphere, 1, sycl::access::mode::read, sycl::access::target::device> analytic_spheres_buffer,
-                 //sycl::accessor<FlattenedBVH::FlattenedNode, 1, sycl::access::mode::read, sycl::access::target::device> bvh_nodes,
+                 sycl::accessor<FlattenedBVH::FlattenedNode, 1, sycl::access::mode::read, sycl::access::target::device> bvh_nodes,
                  sycl::stream debug_out_stream) :
                  /*sycl::accessor<sycl::float4, 2, sycl::access::mode::read, sycl::access::target::image> skysphere,
                  sycl::sampler skysphere_sampler,*/
-        m_width(width), m_height(height), m_kernel_iteration(kernel_iteration),
+        m_width(width), m_height(height), 
+        m_kernel_iteration(kernel_iteration),
         m_frame_buffer_access(frame_buffer_accessor),
         m_triangle_buffer_access(triangle_buffer_accessor),
         m_materials_buffer_access(materials_buffer_accessor),
         m_emissive_triangle_indices_buffer(emissive_triangle_indices_buffer_accessor),
         m_materials_indices_buffer(materials_indices_buffer_accessor),
         //m_sphere_buffer(analytic_spheres_buffer),
-        //m_bvh_nodes(bvh_nodes),
+        m_bvh_nodes(bvh_nodes),
         /*m_skysphere(skysphere),
         m_skysphere_width(skysphere.get_range()[1]),
         m_skysphere_height(skysphere.get_range()[0]),
@@ -54,10 +55,10 @@ public:
 
     void set_camera(Camera camera) { m_camera = camera; }
 
-    /*void set_bvh_plane_normals(const sycl::accessor<Vector, 1, sycl::access::mode::read, sycl::access::target::device>& plane_normals_accessor)
+    void set_bvh_plane_normals(const sycl::accessor<Vector, 1, sycl::access::mode::read, sycl::access::target::device>& plane_normals_accessor)
     {
         BVH_PLANE_NORMALS = plane_normals_accessor;
-    }*/
+    }
 
     void operator()(const sycl::nd_item<2>& coordinates) const
     {
@@ -79,8 +80,8 @@ public:
     SYCL_EXTERNAL Color cook_torrance_brdf(const SimpleMaterial& material, const Vector& to_light_direction, const Vector& view_direction, const Vector& surface_normal) const;
     SYCL_EXTERNAL Color cook_torrance_brdf_importance_sample(const SimpleMaterial& material, const Vector& view_direction, const Vector& surface_normal, Vector& output_direction, xorshift32_generator& random_number_generator) const;
 
-    //bool intersect_scene(const Ray ray, HitInfo* closest_hit_info) const;
-    //bool intersect_scene_bvh(const Ray ray, HitInfo* closest_hit_info) const;
+    bool intersect_scene(const Ray ray, HitInfo* closest_hit_info) const;
+    bool intersect_scene_bvh(const Ray ray, HitInfo* closest_hit_info) const;
     bool INTERSECT_SCENE(Ray ray, HitInfo* hit_info) const;
     Point sample_random_point_on_lights(xorshift32_generator& random_number_generator, float& pdf, LightSourceInformation& light_info) const;
     bool evaluate_shadow_ray(Ray ray, float t_max) const;
@@ -98,8 +99,8 @@ private:
 
     //sycl::accessor<Sphere, 1, sycl::access::mode::read, sycl::access::target::device> m_sphere_buffer;
 
-    //sycl::accessor<FlattenedBVH::FlattenedNode, 1, sycl::access::mode::read, sycl::access::target::device> m_bvh_nodes;
-    //sycl::accessor<Vector, 1, sycl::access::mode::read, sycl::access::target::device> BVH_PLANE_NORMALS;
+    sycl::accessor<FlattenedBVH::FlattenedNode, 1, sycl::access::mode::read, sycl::access::target::device> m_bvh_nodes;
+    sycl::accessor<Vector, 1, sycl::access::mode::read, sycl::access::target::device> BVH_PLANE_NORMALS;
 
     /*sycl::accessor<sycl::float4, 2, sycl::access::mode::read, sycl::access::target::image> m_skysphere;
     int m_skysphere_width, m_skysphere_height;

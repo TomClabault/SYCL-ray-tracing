@@ -3,7 +3,7 @@
 #include "triangle.h"
 #include "vec.h"
 
-#define USE_BVH 0
+#define USE_BVH 1
 
 void branchlessONB(const Vector& n, Vector& b1, Vector& b2)
 {
@@ -126,7 +126,6 @@ void RenderKernel::ray_trace_pixel(int x, int y) const
 
 
                     Ray shadow_ray(shadow_ray_origin, shadow_ray_direction_normalized);
-                    bool in_shadow;// = evaluate_shadow_ray(shadow_ray, distance_to_light);
 
                     bool inter_found = false;
                     float closest_intersection_distance = 1000000.0f;
@@ -149,7 +148,7 @@ void RenderKernel::ray_trace_pixel(int x, int y) const
                         }
                     }
 
-                    in_shadow = inter_found && (shadow_hit_info.t + 1.0e-4f < distance_to_light);
+                    bool in_shadow = inter_found && (shadow_hit_info.t + 1.0e-4f < distance_to_light);
 
                     Color radiance = Color(0.0f, 0.0f, 0.0f);
                     if (!in_shadow)
@@ -429,79 +428,79 @@ inline Color RenderKernel::cook_torrance_brdf_importance_sample(const SimpleMate
 //    return inter_found;// closest_hit_info.t != -1.0f;
 //}
 //
-//inline bool RenderKernel::intersect_scene_bvh(const Ray ray, HitInfo* closest_hit_info) const
-//{
-//    //closest_hit_info.t = -1.0f;
-//
-//    //FlattenedBVH::Stack stack;
-//    //stack.push(0);//Pushing the root of the BVH
-//
-//    //sycl::marray<float, BVHConstants::PLANES_COUNT> denoms;
-//    //sycl::marray<float, BVHConstants::PLANES_COUNT> numers;
-//
-//    //for (int i = 0; i < BVHConstants::PLANES_COUNT; i++)
-//    //{
-//    //    denoms[i] = dot(BVH_PLANE_NORMALS[i], ray.direction);
-//    //    numers[i] = dot(BVH_PLANE_NORMALS[i], Vector(ray.origin));
-//    //}
-//
-//    //float closest_intersection_distance = -1;
-//    //while (!stack.empty())
-//    //{
-//    //    int node_index = stack.pop();
-//    //    const FlattenedBVH::FlattenedNode& node = m_bvh_nodes[node_index];
-//
-//    //    if (node.intersect_volume(denoms, numers))
-//    //    {
-//    //        if (node.is_leaf)
-//    //        {
-//    //            for (int i = 0; i < node.nb_triangles; i++)
-//    //            {
-//    //                int triangle_index = node.triangles_indices[i];
-//
-//    //                HitInfo local_hit_info;
-//    //                if (m_triangle_buffer_access[triangle_index].intersect(ray, local_hit_info))
-//    //                {
-//    //                    if (closest_intersection_distance > local_hit_info.t || closest_intersection_distance == -1)
-//    //                    {
-//    //                        closest_intersection_distance = local_hit_info.t;
-//    //                        closest_hit_info = local_hit_info;
-//    //                        closest_hit_info.material_index = m_materials_indices_buffer[triangle_index];
-//    //                    }
-//    //                }
-//    //            }
-//    //        }
-//    //        else
-//    //        {
-//    //            stack.push(node.children[0]);
-//    //            stack.push(node.children[1]);
-//    //            stack.push(node.children[2]);
-//    //            stack.push(node.children[3]);
-//    //            stack.push(node.children[4]);
-//    //            stack.push(node.children[5]);
-//    //            stack.push(node.children[6]);
-//    //            stack.push(node.children[7]);
-//    //        }
-//    //    }
-//    //}
-//
-//    //for (int i = 0; i < m_sphere_buffer.size(); i++)
-//    //{
-//    //    const Sphere& sphere = m_sphere_buffer[i];
-//    //    HitInfo hit_info;
-//    //    if (sphere.intersect(ray, hit_info))
-//    //    {
-//    //        if (hit_info.t < closest_intersection_distance || closest_intersection_distance == -1.0f)
-//    //        {
-//    //            closest_intersection_distance = hit_info.t;
-//    //            closest_hit_info = hit_info;
-//    //        }
-//    //    }
-//    //}
-//
-//    //return closest_hit_info.t > -1.0f;
-//    return true;
-//}
+inline bool RenderKernel::intersect_scene_bvh(const Ray ray, HitInfo* closest_hit_info) const
+{
+    closest_hit_info->t = -1.0f;
+
+    FlattenedBVH::Stack stack;
+    stack.push(0);//Pushing the root of the BVH
+
+    sycl::marray<float, BVHConstants::PLANES_COUNT> denoms;
+    sycl::marray<float, BVHConstants::PLANES_COUNT> numers;
+
+    for (int i = 0; i < BVHConstants::PLANES_COUNT; i++)
+    {
+        denoms[i] = dot(BVH_PLANE_NORMALS[i], ray.direction);
+        numers[i] = dot(BVH_PLANE_NORMALS[i], Vector(ray.origin));
+    }
+
+    float closest_intersection_distance = -1;
+    while (!stack.empty())
+    {
+        int node_index = stack.pop();
+        const FlattenedBVH::FlattenedNode& node = m_bvh_nodes[node_index];
+
+        if (node.intersect_volume(denoms, numers))
+        {
+            if (node.is_leaf)
+            {
+                for (int i = 0; i < node.nb_triangles; i++)
+                {
+                    int triangle_index = node.triangles_indices[i];
+
+                    HitInfo local_hit_info;
+                    if (m_triangle_buffer_access[triangle_index].intersect(ray, &local_hit_info))
+                    {
+                        if (closest_intersection_distance > local_hit_info.t || closest_intersection_distance == -1)
+                        {
+                            closest_intersection_distance = local_hit_info.t;
+                            *closest_hit_info = local_hit_info;
+                            closest_hit_info->material_index = m_materials_indices_buffer[triangle_index];
+                        }
+                    }
+                }
+            }
+            else
+            {
+                stack.push(node.children[0]);
+                stack.push(node.children[1]);
+                stack.push(node.children[2]);
+                stack.push(node.children[3]);
+                stack.push(node.children[4]);
+                stack.push(node.children[5]);
+                stack.push(node.children[6]);
+                stack.push(node.children[7]);
+            }
+        }
+    }
+
+    /*for (int i = 0; i < m_sphere_buffer.size(); i++)
+    {
+        const Sphere& sphere = m_sphere_buffer[i];
+        HitInfo hit_info;
+        if (sphere.intersect(ray, hit_info))
+        {
+            if (hit_info.t < closest_intersection_distance || closest_intersection_distance == -1.0f)
+            {
+                closest_intersection_distance = hit_info.t;
+                closest_hit_info = hit_info;
+            }
+        }
+    }*/
+
+    return closest_hit_info->t > -1.0f;
+    return true;
+}
 
 bool RenderKernel::INTERSECT_SCENE(Ray ray, HitInfo* hit_info) const
 {
@@ -522,15 +521,17 @@ bool RenderKernel::INTERSECT_SCENE(Ray ray, HitInfo* hit_info) const
         {
             if (local_hit_info.t < closest_intersection_distance || !inter_found)
             {
-                hit_info->t = local_hit_info.t;
-                hit_info->inter_point = ray.origin + ray.direction * hit_info->t;
-                /*hit_info->normal_at_intersection.x = local_hit_info.normal_at_intersection.x;
-                hit_info->normal_at_intersection.y = local_hit_info.normal_at_intersection.y;*/
-                hit_info->normal_at_intersection = normalize(Vector(1, 0, 0));// hit_info->normal_at_intersection);
-                hit_info->material_index = m_materials_indices_buffer[i];
+                //hit_info->t = local_hit_info.t;
+                //hit_info->inter_point = ray.origin + ray.direction * hit_info->t;
+                ///*hit_info->normal_at_intersection.x = local_hit_info.normal_at_intersection.x;
+                //hit_info->normal_at_intersection.y = local_hit_info.normal_at_intersection.y;*/
+                //hit_info->normal_at_intersection = local_hit_info.normal_at_intersection;
+                ////hit_info->normal_at_intersection = normalize(hit_info->normal_at_intersection);
+                //hit_info->material_index = m_materials_indices_buffer[i];
 
                 closest_intersection_distance = local_hit_info.t;
-                //*hit_info = local_hit_info; //THIS LINE RIGHT HERE
+                *hit_info = local_hit_info; //THIS LINE RIGHT HERE
+                hit_info->material_index = m_materials_indices_buffer[i];
 
                 inter_found = true;
             }
