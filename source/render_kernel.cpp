@@ -385,49 +385,49 @@ inline Color RenderKernel::cook_torrance_brdf_importance_sample(const SimpleMate
     return brdf_color;
 }
 
-//bool RenderKernel::intersect_scene(const Ray ray, HitInfo* closest_hit_info) const
-//{
-//    float closest_intersection_distance = -1.0f;
-//    bool inter_found = false;
-//
-//    for (int i = 0; i < m_triangle_buffer_access.size(); i++)
-//    {
-//        const Triangle& triangle = m_triangle_buffer_access[i];
-//
-//        HitInfo hit_info;
-//        if (triangle.intersect(ray, &hit_info))
-//        {
-//            if (hit_info.t < closest_intersection_distance || !inter_found)
-//            {
-//                hit_info.material_index = m_materials_indices_buffer[i];
-//                closest_intersection_distance = hit_info.t;
-//                *closest_hit_info = hit_info;
-//
-//                inter_found = true;
-//            }
-//        }
-//    }
-//
-//    /*for (int i = 0; i < m_sphere_buffer.size(); i++)
-//    {
-//        const Sphere& sphere = m_sphere_buffer[i];
-//
-//        HitInfo hit_info;
-//        if (sphere.intersect(ray, hit_info))
-//        {
-//            if (hit_info.t < closest_intersection_distance || !inter_found)
-//            {
-//                closest_intersection_distance = hit_info.t;
-//                closest_hit_info = hit_info;
-//
-//                inter_found = true;
-//            }
-//        }
-//    }*/
-//
-//    return inter_found;// closest_hit_info.t != -1.0f;
-//}
-//
+bool RenderKernel::intersect_scene(const Ray ray, HitInfo* closest_hit_info) const
+{
+    float closest_intersection_distance = -1.0f;
+    bool inter_found = false;
+
+    for (int i = 0; i < m_triangle_buffer_access.size(); i++)
+    {
+        const Triangle& triangle = m_triangle_buffer_access[i];
+
+        HitInfo hit_info;
+        if (triangle.intersect(ray, &hit_info))
+        {
+            if (hit_info.t < closest_intersection_distance || !inter_found)
+            {
+                hit_info.material_index = m_materials_indices_buffer[i];
+                closest_intersection_distance = hit_info.t;
+                *closest_hit_info = hit_info;
+
+                inter_found = true;
+            }
+        }
+    }
+
+    /*for (int i = 0; i < m_sphere_buffer.size(); i++)
+    {
+        const Sphere& sphere = m_sphere_buffer[i];
+
+        HitInfo hit_info;
+        if (sphere.intersect(ray, hit_info))
+        {
+            if (hit_info.t < closest_intersection_distance || !inter_found)
+            {
+                closest_intersection_distance = hit_info.t;
+                closest_hit_info = hit_info;
+
+                inter_found = true;
+            }
+        }
+    }*/
+
+    return inter_found;// closest_hit_info.t != -1.0f;
+}
+
 inline bool RenderKernel::intersect_scene_bvh(const Ray ray, HitInfo* closest_hit_info) const
 {
     closest_hit_info->t = -1.0f;
@@ -504,41 +504,41 @@ inline bool RenderKernel::intersect_scene_bvh(const Ray ray, HitInfo* closest_hi
 
 bool RenderKernel::INTERSECT_SCENE(Ray ray, HitInfo* hit_info) const
 {
-//#if USE_BVH
-//    return intersect_scene_bvh(ray, hit_info);
-//#else
-//    return intersect_scene(ray, hit_info);
-//#endif
+#if USE_BVH
+    return intersect_scene_bvh(ray, hit_info);
+#else
+    return intersect_scene(ray, hit_info);
+#endif
 
-    bool inter_found = false;
-    float closest_intersection_distance = 1000000.0f;
-    for (int i = 0; i < m_triangle_buffer_access.size(); i++)
-    {
-        const Triangle triangle = m_triangle_buffer_access[i];
+    //bool inter_found = false;
+    //float closest_intersection_distance = 1000000.0f;
+    //for (int i = 0; i < m_triangle_buffer_access.size(); i++)
+    //{
+    //    const Triangle triangle = m_triangle_buffer_access[i];
 
-        HitInfo local_hit_info;
-        if (triangle.intersect(ray, &local_hit_info))
-        {
-            if (local_hit_info.t < closest_intersection_distance || !inter_found)
-            {
-                //hit_info->t = local_hit_info.t;
-                //hit_info->inter_point = ray.origin + ray.direction * hit_info->t;
-                ///*hit_info->normal_at_intersection.x = local_hit_info.normal_at_intersection.x;
-                //hit_info->normal_at_intersection.y = local_hit_info.normal_at_intersection.y;*/
-                //hit_info->normal_at_intersection = local_hit_info.normal_at_intersection;
-                ////hit_info->normal_at_intersection = normalize(hit_info->normal_at_intersection);
-                //hit_info->material_index = m_materials_indices_buffer[i];
+    //    HitInfo local_hit_info;
+    //    if (triangle.intersect(ray, &local_hit_info))
+    //    {
+    //        if (local_hit_info.t < closest_intersection_distance || !inter_found)
+    //        {
+    //            //hit_info->t = local_hit_info.t;
+    //            //hit_info->inter_point = ray.origin + ray.direction * hit_info->t;
+    //            ///*hit_info->normal_at_intersection.x = local_hit_info.normal_at_intersection.x;
+    //            //hit_info->normal_at_intersection.y = local_hit_info.normal_at_intersection.y;*/
+    //            //hit_info->normal_at_intersection = local_hit_info.normal_at_intersection;
+    //            ////hit_info->normal_at_intersection = normalize(hit_info->normal_at_intersection);
+    //            //hit_info->material_index = m_materials_indices_buffer[i];
 
-                closest_intersection_distance = local_hit_info.t;
-                *hit_info = local_hit_info; //THIS LINE RIGHT HERE
-                hit_info->material_index = m_materials_indices_buffer[i];
+    //            closest_intersection_distance = local_hit_info.t;
+    //            *hit_info = local_hit_info; //THIS LINE RIGHT HERE
+    //            hit_info->material_index = m_materials_indices_buffer[i];
 
-                inter_found = true;
-            }
-        }
-    }
+    //            inter_found = true;
+    //        }
+    //    }
+    //}
 
-    return inter_found;
+    //return inter_found;
 }
 
 inline Point RenderKernel::sample_random_point_on_lights(xorshift32_generator& random_number_generator, float& pdf, LightSourceInformation& light_info) const
