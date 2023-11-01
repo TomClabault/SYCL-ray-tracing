@@ -8,7 +8,7 @@
 #include <sycl/sycl.hpp>
 
 #define SAMPLES_PER_KERNEL 64
-#define MAX_BOUNCES 2
+#define MAX_BOUNCES 5
 
 #define TILE_SIZE_X 8
 #define TILE_SIZE_Y TILE_SIZE_X
@@ -44,7 +44,7 @@ public:
 
     SYCL_EXTERNAL void ray_trace_pixel(int x, int y) const;
 
-    bool intersect_scene(const Ray ray, HitInfo* closest_hit_info) const;
+    bool intersect_scene(const Ray ray, HitInfo& closest_hit_info) const;
     bool evaluate_shadow_ray(Ray ray, float t_max) const;
 
 private:

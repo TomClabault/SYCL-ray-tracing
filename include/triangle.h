@@ -13,7 +13,7 @@ struct Triangle
 	Triangle(const Point& a, const Point& b, const Point& c) : m_a(a), m_b(b), m_c(c) {}
 
 	//From https://en.wikipedia.org/wiki/M%C3%B6ller%E2%80%93Trumbore_intersection_algorithm
-	inline bool intersect(const Ray ray, HitInfo* hit_info) const
+	inline bool intersect(const Ray ray, HitInfo& hit_info) const
 	{
 		const float EPSILON = 0.000001f;
 		Vector edge1, edge2, h, s, q;
@@ -45,13 +45,13 @@ struct Triangle
 
 		if (t > EPSILON) // ray intersection
 		{
-			hit_info->inter_point = ray.origin + ray.direction * t;
-			hit_info->normal_at_intersection = normalize(cross(edge1, edge2));
+			hit_info.inter_point = ray.origin + ray.direction * t;
+			hit_info.normal_at_intersection = normalize(cross(edge1, edge2));
 
-			hit_info->t = t;
+			hit_info.t = t;
 
-			hit_info->u = u;
-			hit_info->v = v;
+			hit_info.u = u;
+			hit_info.v = v;
 
 			return true;
 		}

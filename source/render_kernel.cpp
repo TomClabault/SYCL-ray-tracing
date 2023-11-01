@@ -42,7 +42,7 @@ void RenderKernel::ray_trace_pixel(int x, int y) const
             if (next_ray_state == BOUNCE)
             {
                 HitInfo closest_hit_info;
-                bool intersection_found = intersect_scene(ray, &closest_hit_info);
+                bool intersection_found = intersect_scene(ray, closest_hit_info);
 
                 if (intersection_found)
                 {
@@ -50,6 +50,12 @@ void RenderKernel::ray_trace_pixel(int x, int y) const
 
                     Ray shadow_ray(Point(0, 0, 0), Vector(1, 0, 0));
 
+                    ///////////////////////////////////////////////////////////
+                    //////
+                    ////// Comment the 'evaluate shadow_ray()' call below
+                    ////// and there is no more memory corruption
+                    //////
+                    ///////////////////////////////////////////////////////////
                     bool in_shadow = false;
                     in_shadow = evaluate_shadow_ray(shadow_ray, 2.0f);
 
@@ -65,7 +71,7 @@ void RenderKernel::ray_trace_pixel(int x, int y) const
                     next_ray_state = RayState::MISSED;
             }
             else if (next_ray_state == MISSED)
-                break;
+                sample_color = Color(1.0f, 0.0f, 0.0f);
             else if (next_ray_state == TERMINATED)
                 break;
         }
@@ -78,7 +84,7 @@ void RenderKernel::ray_trace_pixel(int x, int y) const
     m_frame_buffer_access[y * m_width + x] += final_color;
 }
 
-bool RenderKernel::intersect_scene(const Ray ray, HitInfo* closest_hit_info) const
+bool RenderKernel::intersect_scene(const Ray ray, HitInfo& closest_hit_info) const
 {
     float closest_intersection_distance = -1.0f;
     bool inter_found = false;
@@ -88,12 +94,13 @@ bool RenderKernel::intersect_scene(const Ray ray, HitInfo* closest_hit_info) con
         const Triangle& triangle = m_triangle_buffer_access[i];
 
         HitInfo hit_info;
-        if (triangle.intersect(ray, &hit_info))
+        if (triangle.intersect(ray, hit_info))
         {
             if (hit_info.t < closest_intersection_distance || !inter_found)
             {
                 closest_intersection_distance = hit_info.t;
-                *closest_hit_info = hit_info;
+                //Comment the line below and the corruption is gone
+                closest_hit_info = hit_info;
 
                 inter_found = true;
             }
@@ -107,7 +114,8 @@ bool RenderKernel::intersect_scene(const Ray ray, HitInfo* closest_hit_info) con
 bool RenderKernel::evaluate_shadow_ray(Ray ray, float t_max) const
 {
     HitInfo local_hit_info;
-    bool inter_found = intersect_scene(ray, &local_hit_info);
+    // The line below can also be commented and no more corruption
+    bool inter_found = intersect_scene(ray, local_hit_info);
 
     if (inter_found)
     {
