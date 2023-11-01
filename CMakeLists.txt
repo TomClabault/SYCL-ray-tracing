@@ -10,45 +10,20 @@ project(SYCL_RayTracing LANGUAGES CXX)
 
 find_package(IntelDPCPP REQUIRED)
 
-file(GLOB SYCL_HEADERS "/opt/intel/oneapi/compiler/2023.2.1/linux/include/sycl/*.hpp" "/opt/intel/oneapi/compiler/2023.2.1/linux/include/sycl/CL/*.hpp")
-
 add_executable(SYCL_RayTracing
     ${SYCL_HEADERS}
 
-    source/bvh.cpp
-    source/color.cpp
-    source/flattened_bvh.cpp
-    source/image_io.cpp
     source/main.cpp
     source/mat.cpp
-    source/ray.cpp
     source/render_kernel.cpp
-    source/tests.cpp
-    source/sphere.cpp
-    source/triangle.cpp
-    source/triangle.cpp
-    source/utils.cpp
-    source/vec.cpp
 
-    include/bounding_volume.h
-    include/bvh.h
-    include/bvh_tests.h
     include/camera.h
     include/color.h
-    include/flattened_bvh.h
-    include/image.h
-    include/image_io.h
     include/mat.h
-    include/parsed_obj.h
     include/ray.h
     include/render_kernel.h
-    include/sphere.h
-    include/simple_material.h
-    include/tests.h
     include/triangle.h
-    include/utils.h
     include/vec.h
-    include/xorshift.h
 
     stbi/stb_image.h
     stbi/stb_image_write.h
@@ -57,14 +32,9 @@ add_executable(SYCL_RayTracing
 
 set_property(TARGET SYCL_RayTracing PROPERTY CXX_STANDARD 17)
 
-set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -g -O0")
-
 set(THREADS_PREFER_PTHREAD_FLAG ON)
 find_package(Threads REQUIRED)
 target_link_libraries(SYCL_RayTracing PRIVATE Threads::Threads)
 
-target_include_directories(SYCL_RayTracing PRIVATE "/opt/intel/oneapi/compiler/2023.2.1/linux/include/")
 target_include_directories(SYCL_RayTracing PRIVATE "include/")
 target_include_directories(SYCL_RayTracing PRIVATE "stbi/")
-target_include_directories(SYCL_RayTracing PRIVATE "rapidobj/")
-target_include_directories(SYCL_RayTracing PRIVATE ".")

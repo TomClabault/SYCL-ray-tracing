@@ -8,7 +8,7 @@
 #include <sycl/sycl.hpp>
 
 #define SAMPLES_PER_KERNEL 64
-#define MAX_BOUNCES 5
+#define MAX_BOUNCES 4
 
 #define TILE_SIZE_X 8
 #define TILE_SIZE_Y TILE_SIZE_X

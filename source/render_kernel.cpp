@@ -99,8 +99,10 @@ bool RenderKernel::intersect_scene(const Ray ray, HitInfo& closest_hit_info) con
             if (hit_info.t < closest_intersection_distance || !inter_found)
             {
                 closest_intersection_distance = hit_info.t;
-                //Comment the line below and the corruption is gone
-                closest_hit_info = hit_info;
+                
+                ///////////
+                closest_hit_info = hit_info; //Problematic line
+                ///////////
 
                 inter_found = true;
             }
@@ -109,7 +111,6 @@ bool RenderKernel::intersect_scene(const Ray ray, HitInfo& closest_hit_info) con
 
     return inter_found;
 }
-
 
 bool RenderKernel::evaluate_shadow_ray(Ray ray, float t_max) const
 {
