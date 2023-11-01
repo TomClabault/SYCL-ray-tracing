@@ -32,10 +32,8 @@ void RenderKernel::ray_trace_pixel(int x, int y) const
         float x_jittered = (x + 0.5f);
         float y_jittered = (y + 0.5f);
 
-        //TODO area sampling triangles
         Ray ray = get_camera_ray(x_jittered, y_jittered);
 
-        Color throughput = Color(1.0f, 1.0f, 1.0f);
         Color sample_color = Color(0.0f, 0.0f, 0.0f);
         RayState next_ray_state = RayState::BOUNCE;
 

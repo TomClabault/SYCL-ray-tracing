@@ -1,4 +1,3 @@
-
 #ifndef _COLOR_H
 #define _COLOR_H
 
@@ -10,16 +9,11 @@
 
 struct Color
 {
-    //! constructeur par defaut.
     Color( ) : r(0.f), g(0.f), b(0.f), a(1.f) {}
-    explicit Color( const std::array<float, 3>& rgb) : r(rgb[0]), g(rgb[1]), b(rgb[2]), a(1.0f) {}
-    explicit Color( const Vector& vec) : r(vec.x), g(vec.y), b(vec.z), a(1.0f) {}
+    explicit Color(const Vector& vec) : r(vec.x), g(vec.y), b(vec.z), a(1.0f) {}
     explicit Color( const float _r, const float _g, const float _y, const float _x= 1.f ) : r(_r), g(_g), b(_y), a(_x) {}
     explicit Color( const float _value ) : r(_value), g(_value), b(_value), a(1.f) {}
     
-    //! cree une couleur avec les memes composantes que color, mais remplace sa composante alpha (color.r, color.g, color.b, alpha).
-    Color( const Color& color, const float alpha ) : r(color.r), g(color.g), b(color.b), a(alpha) {}  // remplace alpha.
-
     inline Color& operator=(const Vector& vec)
     {
         r = vec.x;
@@ -65,51 +59,8 @@ struct Color
         return *this;
     }
 
-    inline float power( ) const
-    {
-        return (r+g+b) / 3;
-    }
-
-    inline float max( ) const
-    {
-        return std::max(r, std::max(g, std::max(b, float(0))));
-    }
-
-    friend std::ostream& operator << (std::ostream& os, const Color& color);
-    
     float r, g, b, a;
 };
-
-inline Color Black( )
-{
-    return Color(0, 0, 0);
-}
-
-inline Color White( )
-{
-    return Color(1, 1, 1);
-}
-
-inline Color Red( )
-{
-    return Color(1, 0, 0);
-}
-
-inline Color Green( )
-{
-    return Color(0, 1, 0);
-}
-
-inline Color Blue( )
-{
-    return Color(0, 0, 1);
-}
-
-inline Color Yellow( )
-{
-    return Color(1, 1, 0);
-}
-
 
 inline Color operator+ ( const Color& a, const Color& b )
 {
@@ -157,21 +108,4 @@ inline Color operator/ ( const Color& c, const float k )
     return kk * c;
 }
 
-inline Color exp(const Color &col)
-{
-    return Color(std::exp(col.r), std::exp(col.g), std::exp(col.b), col.a);
-}
-
-inline Color pow(const Color &col, float k)
-{
-    return Color(std::pow(col.r, k), std::pow(col.g, k), std::pow(col.b, k), col.a);
-}
-
-inline const sycl::stream& operator << (const sycl::stream& os, const Color& color)
-{
-    os << "Color[" << color.r << ", " << color.g << ", " << color.b << "]";
-    return os;
-}
-
-///@}
 #endif

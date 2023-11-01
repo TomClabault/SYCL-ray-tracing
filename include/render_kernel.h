@@ -7,9 +7,8 @@
 
 #include <sycl/sycl.hpp>
 
-#define RENDER_KERNEL_ITERATIONS 1
 #define SAMPLES_PER_KERNEL 64
-#define MAX_BOUNCES 5
+#define MAX_BOUNCES 2
 
 #define TILE_SIZE_X 8
 #define TILE_SIZE_Y TILE_SIZE_X
@@ -50,7 +49,6 @@ public:
 
 private:
     int m_width, m_height;
-    int m_kernel_iteration;
 
     sycl::accessor<Color, 1, sycl::access::mode::write, sycl::access::target::device> m_frame_buffer_access;
 

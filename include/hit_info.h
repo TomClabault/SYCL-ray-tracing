@@ -12,11 +12,4 @@ struct HitInfo
     float u = -1, v = -1; //Barycentric coordinates
 };
 
-inline const sycl::stream operator << (const sycl::stream & os, const HitInfo & hit_info)
-{
-    os << "[" << "inter p: " << hit_info.inter_point << ", " << "normal: " << hit_info.normal_at_intersection << ", "  << ", t: " << hit_info.t << "]";
-
-    return os;
-}
-
 #endif
