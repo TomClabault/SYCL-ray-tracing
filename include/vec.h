@@ -35,15 +35,6 @@ struct Point
     SYCL_EXTERNAL float operator() ( const unsigned int i ) const; // l'implementation se trouve en fin de fichier
     SYCL_EXTERNAL float& operator() ( const unsigned int i ); // l'implementation se trouve en fin de fichier
     
-    Point& operator=(const Point& other)
-    {
-        x = other.x;
-        y = other.y;
-        z = other.z;
-
-        return *this;
-    }
-
     float x, y, z;
 };
 
@@ -84,15 +75,6 @@ struct Vector
     float operator() ( const unsigned int i ) const; // l'implementation se trouve en fin de fichier
     float& operator() ( const unsigned int i ); // l'implementation se trouve en fin de fichier
     
-    Vector& operator=(const Vector& other)
-    {
-        x = other.x;
-        y = other.y;
-        z = other.z;
-
-        return *this;
-    }
-
     float x, y, z;
 };
 
