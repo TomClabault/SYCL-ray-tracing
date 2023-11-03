@@ -11,7 +11,7 @@ struct HitInfo
     float t = -1.0f; //Distance along ray
     float u = -1, v = -1; //Barycentric coordinates
 
-    int material_index = -1;
+    int primitive_index = -1;
 };
 
 #endif

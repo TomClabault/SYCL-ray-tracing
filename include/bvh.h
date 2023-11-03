@@ -155,7 +155,10 @@ public:
                     HitInfo local_hit_info;
                     if (triangle.intersect(ray, local_hit_info))
                         if (local_hit_info.t < hit_info.t || hit_info.t == -1)
+                        {
                             hit_info = local_hit_info;
+                            hit_info.primitive_index = triangle_id;
+                        }
                 }
 
                 t_near = hit_info.t;
@@ -264,7 +267,7 @@ public:
     ~BVH();
 
     void operator=(BVH&& bvh);
-
+     
     bool intersect(const Ray& ray, HitInfo& hit_info) const;
     FlattenedBVH flatten() const;
 

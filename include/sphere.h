@@ -6,7 +6,7 @@
 
 struct Sphere
 {
-    Sphere(Point center, float radius, int material_index);
+    Sphere(Point center, float radius, int primitive_index) : center(center), radius(radius), primitive_index(primitive_index) { };
 
     inline bool intersect(const Ray &ray, HitInfo& hit_info) const
     {
@@ -46,7 +46,7 @@ struct Sphere
 
             hit_info.inter_point = ray.origin + ray.direction * hit_info.t;
             hit_info.normal_at_intersection = normalize(hit_info.inter_point - center);
-            hit_info.material_index = material_index;
+            hit_info.primitive_index = primitive_index;
 
             return true;
         }
@@ -55,7 +55,7 @@ struct Sphere
     Point center;
     float radius;
 
-    int material_index;
+    int primitive_index;
 };
 
 #endif

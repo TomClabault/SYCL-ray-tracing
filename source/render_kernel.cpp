@@ -2,8 +2,6 @@
 
 #include "triangle.h"
 
-#define USE_BVH 0
-
 void branchlessONB(const Vector& n, Vector& b1, Vector& b2)
 {
     float sign = std::copysign(1.0f, n.z);
@@ -107,7 +105,7 @@ void RenderKernel::ray_trace_pixel(int x, int y) const
 
                 if (intersection_found)
                 {
-                    int material_index = closest_hit_info.material_index;
+                    int material_index = m_materials_indices_buffer[closest_hit_info.primitive_index];
                     SimpleMaterial material = m_materials_buffer_access[material_index];
 
                     // ------------------------------------- //
@@ -200,12 +198,25 @@ void RenderKernel::ray_trace_pixel(int x, int y) const
     m_frame_buffer_access[y * m_width + x] = gamma_corrected;
 }
 
+#include <omp.h>
 void RenderKernel::render()
 {
+    std::atomic<int> lines_completed = 0;
+
 #pragma omp parallel for schedule(dynamic)
     for (int y = 0; y < m_frame_buffer_access.height(); y++)
+    {
         for (int x = 0; x < m_frame_buffer_access.width(); x++)
             ray_trace_pixel(x, y);
+
+        lines_completed++;
+
+        if (omp_get_thread_num() == 0)
+        {
+            if (lines_completed % (m_frame_buffer_access.height() / 25))
+                std::cout << lines_completed / (float)m_frame_buffer_access.height() * 100 << "%" << std::endl;
+        }
+    }
 }
 
 Color RenderKernel::lambertian_brdf(const SimpleMaterial& material, const Vector& to_light_direction, const Vector& view_direction, const Vector& surface_normal) const
@@ -223,7 +234,7 @@ float GGX_normal_distribution(float alpha, float NoH)
     float alpha2 = alpha * alpha;
     float NoH2 = NoH * NoH;
     float b = (NoH2 * (alpha2 - 1.0f) + 1.0f);
-    return alpha2 * (1.0f / (float)M_PI) / (b * b);
+    return alpha2 * (1.0f / (float)M_PI) / std::max(b * b, 0.0001f);
 }
 
 float G1_schlick_ggx(float k, float dot_prod)
@@ -375,7 +386,7 @@ bool RenderKernel::intersect_scene(const Ray& ray, HitInfo& closest_hit_info) co
             if (hit_info.t < closest_hit_info.t || closest_hit_info.t == -1.0f)
             {
                 closest_hit_info = hit_info;
-                closest_hit_info.material_index = m_materials_indices_buffer[i];
+                closest_hit_info.primitive_index = i;
             }
         }
     }
@@ -473,7 +484,7 @@ inline bool RenderKernel::intersect_scene_bvh(const Ray& ray, HitInfo& closest_h
 {
     closest_hit_info.t == -1.0f;
 
-    bool inter_found = m_bvh.intersect(ray, closest_hit_info);
+    m_bvh.intersect(ray, closest_hit_info);
 
     for (int i = 0; i < m_sphere_buffer.size(); i++)
     {
@@ -485,7 +496,7 @@ inline bool RenderKernel::intersect_scene_bvh(const Ray& ray, HitInfo& closest_h
                 closest_hit_info = hit_info;
     }
 
-    return inter_found;
+    return closest_hit_info.t > 0.0f;
 }
 
 inline bool RenderKernel::INTERSECT_SCENE(const Ray& ray, HitInfo& hit_info) const

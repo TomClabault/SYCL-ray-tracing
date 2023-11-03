@@ -153,7 +153,7 @@ void test_flattened_bvh(BVH& bvh)
 
 void regression_tests()
 {
-    rapidobj::Result parsed_obj = rapidobj::ParseFile("../../SYCL-ray-tracing/data/OBJs/cornell.obj", rapidobj::MaterialLibrary::Default());
+    rapidobj::Result parsed_obj = rapidobj::ParseFile("../SYCL-ray-tracing/data/OBJs/cornell.obj", rapidobj::MaterialLibrary::Default());
     if (parsed_obj.error)
     {
         std::cout << "There was an error loading the OBJ file: " << parsed_obj.error.code.message() << std::endl;
