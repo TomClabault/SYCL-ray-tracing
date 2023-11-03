@@ -5,19 +5,16 @@
 #include "ray.h"
 #include "vec.h"
 
-#include <sycl/sycl.hpp>
-
 struct Triangle
 {
 	Triangle() {}
 	Triangle(const Point& a, const Point& b, const Point& c) : m_a(a), m_b(b), m_c(c) {}
 
-	SYCL_EXTERNAL Point bbox_centroid() const;
+	Point bbox_centroid() const;
 
 	//From https://en.wikipedia.org/wiki/M%C3%B6ller%E2%80%93Trumbore_intersection_algorithm
 	inline bool intersect(const Ray& ray, HitInfo& hit_info) const
 	{
-
 		const float EPSILON = 0.0000001f;
 		Vector edge1, edge2, h, s, q;
 		float a, f, u, v;
@@ -56,15 +53,14 @@ struct Triangle
 			hit_info.u = u;
 			hit_info.v = v;
 
-			return false;
 			return true;
 		}
 		else // This means that there is a line intersection but not a ray intersection.
 			return false;
 	}
 
-	SYCL_EXTERNAL Point& operator[] (int index);
-	SYCL_EXTERNAL const Point& operator[] (int index) const;
+	Point& operator[] (int index);
+	const Point& operator[] (int index) const;
 
 	Point m_a, m_b, m_c;
 };

@@ -61,6 +61,16 @@ public:
         assert(offset < m_pixels.size());
         return m_pixels[offset];
     }
+
+    Color operator[](int index) const
+    {
+        return m_pixels[index];
+    }
+
+    Color& operator[](int index)
+    {
+        return m_pixels[index];
+    }
     
     //! renvoie la couleur interpolee a la position (x, y) [0 .. width]x[0 .. height].
     Color sample_bilinear( const float x, const float y ) const

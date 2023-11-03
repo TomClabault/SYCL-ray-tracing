@@ -3,8 +3,6 @@
 
 #include <cstdint>
 
-#include <sycl/sycl.hpp>
-
 struct xorshift32_state {
     uint32_t a = 42;
 };
@@ -13,13 +11,13 @@ struct xorshift32_generator
 {
     xorshift32_generator(uint32_t seed) : m_state({ seed }) {}
 
-    SYCL_EXTERNAL float operator()()
+    float operator()()
     {
         //Float in [0, 1[
         return std::min(xorshift32() / (float)std::numeric_limits<unsigned int>::max(), 1.0f - 1.0e-6f);
     }
 
-    SYCL_EXTERNAL uint32_t xorshift32()
+    uint32_t xorshift32()
     {
         /* Algorithm "xor" from p. 4 of Marsaglia, "Xorshift RNGs" */
         uint32_t x = m_state.a;

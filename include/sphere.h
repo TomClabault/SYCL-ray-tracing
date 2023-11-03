@@ -28,7 +28,7 @@ struct Sphere
                 hit_info.t = -b / a2;
             else
             {
-                float sqrt_delta = sycl::sqrt(delta);
+                float sqrt_delta = std::sqrt(delta);
 
                 float t1 = (-b - sqrt_delta) / a2;
                 float t2 = (-b + sqrt_delta) / a2;

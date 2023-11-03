@@ -95,37 +95,6 @@ struct BoundingVolume
         return true;
     }
 
-    static inline bool intersect(const std::array<float, BVHConstants::PLANES_COUNT>& d_near,
-                          const std::array<float, BVHConstants::PLANES_COUNT>& d_far,
-                          const sycl::marray<float, BVHConstants::PLANES_COUNT>& denoms,
-                          const sycl::marray<float, BVHConstants::PLANES_COUNT>& numers)
-    {
-        float t_near = (float)-INFINITY;
-        float t_far = (float)INFINITY;
-
-        for (int i = 0; i < BVHConstants::PLANES_COUNT; i++)
-        {
-            float denom = denoms[i];
-            if (denom == 0.0f)
-                continue;
-            float inv_denom = 1.0f / denom;
-
-            //inverse denom to avoid division
-            float d_near_i = (d_near[i] - numers[i]) * inv_denom;
-            float d_far_i = (d_far[i] - numers[i]) * inv_denom;
-            if (denom < 0.0f)
-                std::swap(d_near_i, d_far_i);
-
-            t_near = sycl::max(t_near, d_near_i);
-            t_far = sycl::min(t_far, d_far_i);
-
-            if (t_far < t_near)
-                return false;
-        }
-
-        return true;
-    }
-
     /**
      * @params denoms Precomputed denominators
      */

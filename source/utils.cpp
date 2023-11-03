@@ -2,9 +2,12 @@
 //#define STB_IMAGE_IMPLEMENTATION
 #include "stb_image.h"
 
+#include "color.h"
+#include "image.h"
 #include "rapidobj.hpp"
 #include "utils.h"
 
+#include <iostream>
 #include <string>
 
 ParsedOBJ Utils::parse_obj(const std::string& filepath)
@@ -65,7 +68,7 @@ ParsedOBJ Utils::parse_obj(const std::string& filepath)
     return parsed_obj;
 }
 
-std::vector<sycl::float4> Utils::read_image_float(const std::string& filepath, int& image_width, int& image_height)
+Image Utils::read_image_float(const std::string& filepath, int& image_width, int& image_height)
 {
     int channels;
     float* pixels = stbi_loadf(filepath.c_str(), &image_width, &image_height, &channels, 0);
@@ -73,19 +76,19 @@ std::vector<sycl::float4> Utils::read_image_float(const std::string& filepath, i
     if(!pixels)
     {
         std::cout << "Error reading image " << filepath << std::endl;
-        return std::vector<sycl::float4>();
+        return Image();
     }
 
-    std::vector<sycl::float4> data(image_width * image_height);
+    Image output(image_width, image_height);
     //Using the pixels pointer as an iterator
     for (int y = 0; y < image_height; y++)
     {
         for (int x = 0; x < image_width; x++)
         {
             int index = y * image_width + x;
-            data[index] = sycl::float4(pixels[index * 3 + 0], pixels[index * 3 + 1], pixels[index * 3 + 2], 0.0f);
+            output[index] = pow(Color(pixels[index * 3 + 0], pixels[index * 3 + 1], pixels[index * 3 + 2], 0.0f), 2.2f);
         }
     }
 
-    return data;
+    return output;
 }

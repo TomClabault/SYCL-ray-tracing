@@ -4,8 +4,8 @@
 
 #include "vec.h"
 
-#include <sycl/sycl.hpp>
-
+#include <array>
+#include <cmath>
 #include <iostream>
 
 struct Color
@@ -165,12 +165,6 @@ inline Color exp(const Color &col)
 inline Color pow(const Color &col, float k)
 {
     return Color(std::pow(col.r, k), std::pow(col.g, k), std::pow(col.b, k), col.a);
-}
-
-inline const sycl::stream& operator << (const sycl::stream& os, const Color& color)
-{
-    os << "Color[" << color.r << ", " << color.g << ", " << color.b << "]";
-    return os;
 }
 
 ///@}

@@ -24,12 +24,7 @@ public:
 
     struct FlattenedNode
     {
-        SYCL_EXTERNAL bool intersect_volume(const std::array<float, BVHConstants::PLANES_COUNT>& denoms, const std::array<float, BVHConstants::PLANES_COUNT>& numers) const;
-        //SYCL_EXTERNAL bool intersect_volume(const sycl::marray<float, BVHConstants::PLANES_COUNT>& denoms, const sycl::marray<float, BVHConstants::PLANES_COUNT>& numers) const;
-        inline bool intersect_volume(const sycl::marray<float, BVHConstants::PLANES_COUNT>& denoms, const sycl::marray<float, BVHConstants::PLANES_COUNT>& numers) const
-        {
-            return BoundingVolume::intersect(d_near, d_far, denoms, numers);
-        }
+        bool intersect_volume(const std::array<float, BVHConstants::PLANES_COUNT>& denoms, const std::array<float, BVHConstants::PLANES_COUNT>& numers) const;
 
         //Extents of the planes of the bounding volume
         std::array<float, BVHConstants::PLANES_COUNT> d_near;

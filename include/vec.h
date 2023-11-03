@@ -2,13 +2,7 @@
 #ifndef _VEC_H
 #define _VEC_H
 
-#include <sycl/sycl.hpp>
-
-//! \addtogroup math
-///@{
-
-//! \file
-//! operations sur points et vecteurs
+#include <cmath>
 
 //! declarations anticipees.
 struct vec2;
@@ -21,59 +15,59 @@ struct Point;
 struct Point
 {
     //! constructeur par defaut.
-    SYCL_EXTERNAL Point( ) : x(0), y(0), z(0) {}
-    SYCL_EXTERNAL explicit Point( const float _x, const float _y, const float _z ) : x(_x), y(_y), z(_z) {}
+    Point( ) : x(0), y(0), z(0) {}
+    explicit Point( const float _x, const float _y, const float _z ) : x(_x), y(_y), z(_z) {}
 
     //! cree un point a partir des coordonnees du vecteur generique (v.x, v.y, v.z).
-    SYCL_EXTERNAL Point( const vec2& v, const float z );   // l'implementation se trouve en fin de fichier, la structure vec3 n'est pas encore connue.
-    SYCL_EXTERNAL Point( const vec3& v );   // l'implementation se trouve en fin de fichier, la structure vec3 n'est pas encore connue.
-    SYCL_EXTERNAL Point( const vec4& v );   // l'implementation se trouve en fin de fichier, la structure vec3 n'est pas encore connue.
+    Point( const vec2& v, const float z );   // l'implementation se trouve en fin de fichier, la structure vec3 n'est pas encore connue.
+    Point( const vec3& v );   // l'implementation se trouve en fin de fichier, la structure vec3 n'est pas encore connue.
+    Point( const vec4& v );   // l'implementation se trouve en fin de fichier, la structure vec3 n'est pas encore connue.
     //! cree un point a partir des coordonnes du vecteur (v.x, v.y, v.z).
-    SYCL_EXTERNAL explicit Point( const Vector& v );   // l'implementation se trouve en fin de fichier, la structure vector n'est pas encore connue.
+    explicit Point( const Vector& v );   // l'implementation se trouve en fin de fichier, la structure vector n'est pas encore connue.
     
     //! renvoie la ieme composante du point.
-    SYCL_EXTERNAL float operator() ( const unsigned int i ) const; // l'implementation se trouve en fin de fichier
-    SYCL_EXTERNAL float& operator() ( const unsigned int i ); // l'implementation se trouve en fin de fichier
+    float operator() ( const unsigned int i ) const; // l'implementation se trouve en fin de fichier
+    float& operator() ( const unsigned int i ); // l'implementation se trouve en fin de fichier
     
     float x, y, z;
 };
 
 //! renvoie le point origine (0, 0, 0)
-SYCL_EXTERNAL Point Origin( );
+Point Origin( );
 
 //! renvoie la distance etre 2 points.
-SYCL_EXTERNAL float distance( const Point& a, const Point& b );
+float distance( const Point& a, const Point& b );
 //! renvoie le carre de la distance etre 2 points.
-SYCL_EXTERNAL float distance2( const Point& a, const Point& b );
+float distance2( const Point& a, const Point& b );
 
 //! renvoie le milieu du segment ab.
-SYCL_EXTERNAL Point center( const Point& a, const Point& b );
+Point center( const Point& a, const Point& b );
 
 //! renvoie la plus petite composante de chaque point. x, y, z= min(a.x, b.x), min(a.y, b.y), min(a.z, b.z).
-SYCL_EXTERNAL Point min( const Point& a, const Point& b );
+Point min( const Point& a, const Point& b );
 //! renvoie la plus grande composante de chaque point. x, y, z= max(a.x, b.x), max(a.y, b.y), max(a.z, b.z).
-SYCL_EXTERNAL Point max( const Point& a, const Point& b );
+Point max( const Point& a, const Point& b );
 
 
 //! representation d'un vecteur 3d.
 struct Vector
 {
     //! constructeur par defaut.
-    SYCL_EXTERNAL Vector( ) : x(0), y(0), z(0) {}
-    SYCL_EXTERNAL explicit Vector( const float _x, const float _y, const float _z ) : x(_x), y(_y), z(_z) {}
+    Vector( ) : x(0), y(0), z(0) {}
+    explicit Vector( const float _x, const float _y, const float _z ) : x(_x), y(_y), z(_z) {}
     
     //! cree le vecteur ab.
-    SYCL_EXTERNAL explicit Vector( const Point& a, const Point& b ) : x(b.x - a.x), y(b.y - a.y), z(b.z - a.z) {}
+    explicit Vector( const Point& a, const Point& b ) : x(b.x - a.x), y(b.y - a.y), z(b.z - a.z) {}
 
     //! cree un vecteur a partir des coordonnees du vecteur generique (v.x, v.y, v.z).
-    SYCL_EXTERNAL Vector( const vec3& v );   // l'implementation se trouve en fin de fichier, la structure vec3 n'est pas encore connue.
-    SYCL_EXTERNAL Vector( const vec4& v );   // l'implementation se trouve en fin de fichier, la structure vec3 n'est pas encore connue.
+    Vector( const vec3& v );   // l'implementation se trouve en fin de fichier, la structure vec3 n'est pas encore connue.
+    Vector( const vec4& v );   // l'implementation se trouve en fin de fichier, la structure vec3 n'est pas encore connue.
     //! cree un vecteur a partir des coordonnes du vecteur (v.x, v.y, v.z).
-    SYCL_EXTERNAL explicit Vector( const Point& a );   // l'implementation se trouve en fin de fichier.
+    explicit Vector( const Point& a );   // l'implementation se trouve en fin de fichier.
     
     //! renvoie la ieme composante du vecteur.
-    SYCL_EXTERNAL float operator() ( const unsigned int i ) const; // l'implementation se trouve en fin de fichier
-    SYCL_EXTERNAL float& operator() ( const unsigned int i ); // l'implementation se trouve en fin de fichier
+    float operator() ( const unsigned int i ) const; // l'implementation se trouve en fin de fichier
+    float& operator() ( const unsigned int i ); // l'implementation se trouve en fin de fichier
     
     float x, y, z;
 };
@@ -154,48 +148,11 @@ inline Vector operator* ( const Vector& a, const Vector& b )
     return Vector(a.x * b.x, a.y * b.y, a.z * b.z);
 }
 
-inline Vector operator/ ( const Vector& v, const float k )
+inline Vector operator/ (const Vector& v, const float k)
 {
-    float kk= 1 / k;
+    float kk = 1 / k;
     return kk * v;
-}/*
-
-//! renvoie le vecteur a - b.
-SYCL_EXTERNAL Vector operator- ( const Point& a, const Point& b );
-
-//! renvoie le "point" a + b.
-SYCL_EXTERNAL Point operator+ ( const Point& a, const Point& b );
-
-//! renvoie le "point" k*a;
-SYCL_EXTERNAL Point operator* ( const float k, const Point& a );
-//! renvoie le "point" a*k;
-SYCL_EXTERNAL Point operator* ( const Point& a, const float k );
-//! renvoie le "point" v/k;
-SYCL_EXTERNAL Point operator/ ( const Point& a, const float k );
-
-//! renvoie le vecteur -v.
-SYCL_EXTERNAL Vector operator- ( const Vector& v );
-
-//! renvoie le point a+v.
-SYCL_EXTERNAL Point operator+ ( const Point& a, const Vector& v );
-//! renvoie le point a+v.
-SYCL_EXTERNAL Point operator+ ( const Vector& v, const Point& a );
-//! renvoie le point a-v.
-SYCL_EXTERNAL Point operator- ( const Vector& v, const Point& a );
-//! renvoie le point a-v.
-SYCL_EXTERNAL Point operator- ( const Point& a, const Vector& v );
-//! renvoie le vecteur u+v.
-SYCL_EXTERNAL Vector operator+ ( const Vector& u, const Vector& v );
-//! renvoie le vecteur u-v.
-SYCL_EXTERNAL Vector operator- ( const Vector& u, const Vector& v );
-//! renvoie le vecteur k*u;
-SYCL_EXTERNAL Vector operator* ( const float k, const Vector& v );
-//! renvoie le vecteur k*v;
-SYCL_EXTERNAL Vector operator* ( const Vector& v, const float k );
-//! renvoie le vecteur (a.x*b.x, a.y*b.y, a.z*b.z ).
-SYCL_EXTERNAL Vector operator* ( const Vector& a, const Vector& b );
-//! renvoie le vecteur v/k;
-SYCL_EXTERNAL Vector operator/ ( const Vector& v, const float k );*/
+}
 
 inline float length2( const Vector& v )
 {
@@ -204,12 +161,12 @@ inline float length2( const Vector& v )
 
 inline float length( const Vector& v )
 {
-    return sycl::sqrt(length2(v));
+    return std::sqrt(length2(v));
 }
 
 inline Vector abs(const Vector& v)
 {
-    return Vector(sycl::abs(v.x), sycl::abs(v.y), sycl::abs(v.z));
+    return Vector(std::abs(v.x), std::abs(v.y), std::abs(v.z));
 }
 
 inline Vector normalize( const Vector& v )
@@ -236,11 +193,11 @@ struct vec2
 {
     //! constructeur par defaut.
     vec2( ) : x(0), y(0) {}
-    SYCL_EXTERNAL explicit vec2( const float _x, const float _y ) : x(_x), y(_y) {}
+    explicit vec2( const float _x, const float _y ) : x(_x), y(_y) {}
     
     //! renvoie la ieme composante du vecteur.
-    SYCL_EXTERNAL float operator() ( const unsigned int i ) const { return (&x)[i]; }
-    SYCL_EXTERNAL float& operator() ( const unsigned int i ) { return (&x)[i]; }
+    float operator() ( const unsigned int i ) const { return (&x)[i]; }
+    float& operator() ( const unsigned int i ) { return (&x)[i]; }
 
     float x, y;
 };
@@ -250,19 +207,19 @@ struct vec2
 struct vec3
 {
     //! constructeur par defaut.
-    SYCL_EXTERNAL vec3( ) : x(0), y(0), z(0) {}
-    SYCL_EXTERNAL explicit vec3( const float _x, const float _y, const float _z ) : x(_x), y(_y), z(_z) {}
+    vec3( ) : x(0), y(0), z(0) {}
+    explicit vec3( const float _x, const float _y, const float _z ) : x(_x), y(_y), z(_z) {}
     //! constructeur par defaut.
-    SYCL_EXTERNAL vec3( const vec2& a, const float _z ) : x(a.x), y(a.y), z(_z) {}
+    vec3( const vec2& a, const float _z ) : x(a.x), y(a.y), z(_z) {}
 
     //! cree un vecteur generique a partir des coordonnees du point a.
-    SYCL_EXTERNAL vec3( const Point& a );    // l'implementation se trouve en fin de fichier.
+    vec3( const Point& a );    // l'implementation se trouve en fin de fichier.
     //! cree un vecteur generique a partir des coordonnees du vecteur v.
-    SYCL_EXTERNAL vec3( const Vector& v );    // l'implementation se trouve en fin de fichier.
+    vec3( const Vector& v );    // l'implementation se trouve en fin de fichier.
 
     //! renvoie la ieme composante du vecteur.
-    SYCL_EXTERNAL float operator() ( const unsigned int i ) const { return (&x)[i]; }
-    SYCL_EXTERNAL float& operator() ( const unsigned int i ) { return (&x)[i]; }
+    float operator() ( const unsigned int i ) const { return (&x)[i]; }
+    float& operator() ( const unsigned int i ) { return (&x)[i]; }
     
     float x, y, z;
 };
@@ -272,21 +229,21 @@ struct vec3
 struct vec4
 {
     //! constructeur par defaut.
-    SYCL_EXTERNAL vec4( ) : x(0), y(0), z(0), w(0) {}
-    SYCL_EXTERNAL explicit vec4( const float _x, const float _y, const float _z, const float _w ) : x(_x), y(_y), z(_z), w(_w) {}
+    vec4( ) : x(0), y(0), z(0), w(0) {}
+    explicit vec4( const float _x, const float _y, const float _z, const float _w ) : x(_x), y(_y), z(_z), w(_w) {}
     //! constructeur par defaut.
-    SYCL_EXTERNAL vec4( const vec2& v, const float _z= 0, const float _w= 0 ) : x(v.x), y(v.y), z(_z), w(_w) {}
+    vec4( const vec2& v, const float _z= 0, const float _w= 0 ) : x(v.x), y(v.y), z(_z), w(_w) {}
     //! constructeur par defaut.
-    SYCL_EXTERNAL vec4( const vec3& v, const float _w= 0 ) : x(v.x), y(v.y), z(v.z), w(_w) {}
+    vec4( const vec3& v, const float _w= 0 ) : x(v.x), y(v.y), z(v.z), w(_w) {}
 
     //! cree un vecteur generique a partir des coordonnees du point a, (a.x, a.y, a.z, 1).
-    SYCL_EXTERNAL vec4( const Point& a );    // l'implementation se trouve en fin de fichier.
+    vec4( const Point& a );    // l'implementation se trouve en fin de fichier.
     //! cree un vecteur generique a partir des coordonnees du vecteur v, (v.x, v.y, v.z, 0).
-    SYCL_EXTERNAL vec4( const Vector& v );    // l'implementation se trouve en fin de fichier.
+    vec4( const Vector& v );    // l'implementation se trouve en fin de fichier.
     
     //! renvoie la ieme composante du vecteur.
-    SYCL_EXTERNAL float operator() ( const unsigned int i ) const { return (&x)[i]; }
-    SYCL_EXTERNAL float& operator() ( const unsigned int i ) { return (&x)[i]; }
+    float operator() ( const unsigned int i ) const { return (&x)[i]; }
+    float& operator() ( const unsigned int i ) { return (&x)[i]; }
 
     float x, y, z, w;
 };
@@ -330,19 +287,4 @@ inline std::ostream& operator<<(std::ostream& o, const Vector& v)
     return o;
 }
 
-inline const sycl::stream &operator<<(const sycl::stream& stream, const Point& p)
-{
-    stream << "(" << p.x << ", " << p.y << ", " << p.z << ")";
-
-    return stream;
-}
-
-inline const sycl::stream &operator<<(const sycl::stream& stream, const Vector& v)
-{
-    stream << "(" << v.x << ", " << v.y << ", " << v.z << ")";
-
-    return stream;
-}
-
-///@}
 #endif

@@ -6,7 +6,7 @@
 
 void branchlessONB(const Vector& n, Vector& b1, Vector& b2)
 {
-    float sign = sycl::copysign(1.0f, n.z);
+    float sign = std::copysign(1.0f, n.z);
     const float a = -1.0f / (sign + n.z);
     const float b = n.x * n.y * a;
     b1 = Vector(1.0f + sign * n.x * n.x * a, sign * b, -sign * n.x);
@@ -29,12 +29,12 @@ Vector RenderKernel::uniform_direction_around_normal(const Vector& normal, float
     float rand_2 = random_number_generator();
 
     float phi = 2.0f * (float)M_PI * rand_1;
-    float root = sycl::sqrt(1.0f - rand_2 * rand_2);
+    float root = std::sqrt(1.0f - rand_2 * rand_2);
 
     pdf = 1.0f / (2.0f * (float)M_PI);
 
     //Generating a random direction in a local space with Z as the Up vector
-    Vector random_dir_local_space(sycl::cos(phi) * root, sycl::sin(phi) * root, rand_2);
+    Vector random_dir_local_space(std::cos(phi) * root, std::sin(phi) * root, rand_2);
     return rotate_vector_around_normal(normal, random_dir_local_space);
 }
 
@@ -43,15 +43,15 @@ Vector RenderKernel::cosine_weighted_direction_around_normal(const Vector& norma
     float rand_1 = random_number_generator();
     float rand_2 = random_number_generator();
 
-    float sqrt_rand_2 = sycl::sqrt(rand_2);
+    float sqrt_rand_2 = std::sqrt(rand_2);
     float phi = 2.0f * (float)M_PI * rand_1;
     float cos_theta = sqrt_rand_2;
-    float sin_theta = sycl::sqrt(sycl::max(0.0f, 1.0f - cos_theta * cos_theta));
+    float sin_theta = std::sqrt(std::max(0.0f, 1.0f - cos_theta * cos_theta));
 
     pdf = sqrt_rand_2 / (float)M_PI;
 
     //Generating a random direction in a local space with Z as the Up vector
-    Vector random_dir_local_space = Vector(sycl::cos(phi) * sin_theta, sycl::sin(phi) * sin_theta, sqrt_rand_2);
+    Vector random_dir_local_space = Vector(std::cos(phi) * sin_theta, std::sin(phi) * sin_theta, sqrt_rand_2);
     return rotate_vector_around_normal(normal, random_dir_local_space);
 }
 
@@ -76,9 +76,6 @@ Ray RenderKernel::get_camera_ray(float x, float y) const
 
 void RenderKernel::ray_trace_pixel(int x, int y) const
 {
-    /*if (!(x == 160 && y == 1))
-        return;*/
-
     xorshift32_generator random_number_generator(x * y * SAMPLES_PER_KERNEL * (m_kernel_iteration + 1));
     //Generating some numbers to make sure the generators of each thread spread apart
     //If not doing this, the generator shows clear artifacts until it has generated
@@ -111,11 +108,7 @@ void RenderKernel::ray_trace_pixel(int x, int y) const
                 if (intersection_found)
                 {
                     int material_index = closest_hit_info.material_index;
-                    //m_out_stream << material_index << " ";
-                    if (material_index < 0 || material_index > 8)
-                        m_out_stream << "here " << material_index << ", "  << x << ", " << y << sycl::endl;
                     SimpleMaterial material = m_materials_buffer_access[material_index];
-                    material = SimpleMaterial();
 
                     // ------------------------------------- //
                     // ---------- Direct lighting ---------- //
@@ -133,38 +126,37 @@ void RenderKernel::ray_trace_pixel(int x, int y) const
                     bool in_shadow = evaluate_shadow_ray(shadow_ray, distance_to_light);
 
                     Color radiance = Color(0.0f, 0.0f, 0.0f);
-                    //if (!in_shadow)
-                    //{
-                    //    const SimpleMaterial& emissive_triangle_material = m_materials_buffer_access[m_materials_indices_buffer[light_source_info.emissive_triangle_index]];
+                    if (!in_shadow)
+                    {
+                        const SimpleMaterial& emissive_triangle_material = m_materials_buffer_access[m_materials_indices_buffer[light_source_info.emissive_triangle_index]];
 
-                    //    radiance = emissive_triangle_material.emission;
-                    //    //Cosine angle on the illuminated surface
-                    //    radiance *= sycl::max(dot(closest_hit_info.normal_at_intersection, shadow_ray_direction_normalized), 0.0f);
-                    //    //Cosine angle on the light surface
-                    //    radiance *= sycl::max(dot(light_source_info.light_source_normal, -shadow_ray_direction_normalized), 0.0f);
-                    //    //Falloff of the light intensity with the distance squared
-                    //    radiance /= distance_to_light * distance_to_light;
-                    //    //PDF: Probability of having chosen this point on this exact light source
-                    //    radiance /= light_sample_pdf;
-                    //    //BRDF of the illuminated surface
-                    //    radiance *= cook_torrance_brdf(material, shadow_ray.direction, -ray.direction, closest_hit_info.normal_at_intersection);
-                    //}
+                        radiance = emissive_triangle_material.emission;
+                        //Cosine angle on the illuminated surface
+                        radiance *= std::max(dot(closest_hit_info.normal_at_intersection, shadow_ray_direction_normalized), 0.0f);
+                        //Cosine angle on the light surface
+                        radiance *= std::max(dot(light_source_info.light_source_normal, -shadow_ray_direction_normalized), 0.0f);
+                        //Falloff of the light intensity with the distance squared
+                        radiance /= distance_to_light * distance_to_light;
+                        //PDF: Probability of having chosen this point on this exact light source
+                        radiance /= light_sample_pdf;
+                        //BRDF of the illuminated surface
+                        radiance *= cook_torrance_brdf(material, shadow_ray.direction, -ray.direction, closest_hit_info.normal_at_intersection);
+                    }
 
                     // --------------------------------------- //
                     // ---------- Indirect lighting ---------- //
                     // --------------------------------------- //
 
-                    /*Vector random_bounce_direction;
+                    Vector random_bounce_direction;
                     Color brdf = cook_torrance_brdf_importance_sample(material, -ray.direction, closest_hit_info.normal_at_intersection, random_bounce_direction, random_number_generator);
-                    throughput *= brdf * sycl::max(0.0f, dot(random_bounce_direction, closest_hit_info.normal_at_intersection));*/
+                    throughput *= brdf * std::max(0.0f, dot(random_bounce_direction, closest_hit_info.normal_at_intersection));
                     
                     if (bounce == 0)
                         sample_color += material.emission;
-                    //sample_color += Color(1.0f) * Color(1.0f, 0.0f, 0.0f);
                     sample_color += radiance * throughput;
 
                     Point new_ray_origin = closest_hit_info.inter_point + closest_hit_info.normal_at_intersection * 1.0e-4f;
-                    ray = Ray(new_ray_origin, Vector(1.0f, 0.0f, 0.0f));
+                    ray = Ray(new_ray_origin, random_bounce_direction);
                     next_ray_state = RayState::BOUNCE;
                 }
                 else
@@ -172,15 +164,16 @@ void RenderKernel::ray_trace_pixel(int x, int y) const
             }
             else if (next_ray_state == MISSED)
             {
-                /*float u, v;
-                u = 0.5f + sycl::atan2(ray.direction.z, ray.direction.x) / (2.0f * (float)M_PI);
-                v = 0.5f + sycl::asin(ray.direction.y) / (float)M_PI;
+                float u, v;
+                u = 0.5f + std::atan2(ray.direction.z, ray.direction.x) / (2.0f * (float)M_PI);
+                v = 0.5f + std::asin(ray.direction.y) / (float)M_PI;
 
-                sycl::int2 coords(v * m_skysphere_height, u * m_skysphere_width);
-                sycl::float4 skysphere_color_float4 = m_skysphere.read(coords, m_skysphere_sampler);
-                Color skysphere_color = Color(skysphere_color_float4.x(), skysphere_color_float4.y(), skysphere_color_float4.z());*/
+                int x = u * m_skysphere.width();
+                int y = m_skysphere.height() - v * m_skysphere.height();
 
-                sample_color += Color(2.0f);// skysphere_color* throughput;
+                Color skysphere_color = m_skysphere[y * m_skysphere.width() + x];
+
+                sample_color += skysphere_color* throughput;
 
                 break;
             }
@@ -195,22 +188,24 @@ void RenderKernel::ray_trace_pixel(int x, int y) const
     final_color.a = 0.0f;
     m_frame_buffer_access[y * m_width + x] += final_color;
 
-    if (m_kernel_iteration == RENDER_KERNEL_ITERATIONS - 1)
-    {
-        //Last iteration, computing the average
-        m_frame_buffer_access[y * m_width + x] /= RENDER_KERNEL_ITERATIONS;
+    const float gamma = 2.2f;
+    const float exposure = 2.5f;
+    Color hdrColor = m_frame_buffer_access[y * m_width + x];
 
-        const float gamma = 2.2f;
-        const float exposure = 2.5f;
-        Color hdrColor = m_frame_buffer_access[y * m_width + x];
+    //Exposure tone mapping
+    Color tone_mapped = Color(1.0f, 1.0f, 1.0f) - exp(-hdrColor * exposure);
+    // Gamma correction
+    Color gamma_corrected = pow(tone_mapped, 1.0f / gamma);
 
-        //Exposure tone mapping
-        Color tone_mapped = Color(1.0f, 1.0f, 1.0f) - exp(-hdrColor * exposure);
-        // Gamma correction
-        Color gamma_corrected = pow(tone_mapped, 1.0f / gamma);
+    m_frame_buffer_access[y * m_width + x] = gamma_corrected;
+}
 
-        m_frame_buffer_access[y * m_width + x] = gamma_corrected;
-    }
+void RenderKernel::render()
+{
+#pragma omp parallel for schedule(dynamic)
+    for (int y = 0; y < m_frame_buffer_access.height(); y++)
+        for (int x = 0; x < m_frame_buffer_access.width(); x++)
+            ray_trace_pixel(x, y);
 }
 
 Color RenderKernel::lambertian_brdf(const SimpleMaterial& material, const Vector& to_light_direction, const Vector& view_direction, const Vector& surface_normal) const
@@ -220,7 +215,7 @@ Color RenderKernel::lambertian_brdf(const SimpleMaterial& material, const Vector
 
 Color fresnel_schlick(Color F0, float NoV)
 {
-    return F0 + (Color(1.0f) - F0) * sycl::pow((1.0f - NoV), 5.0f);
+    return F0 + (Color(1.0f) - F0) * std::pow((1.0f - NoV), 5.0f);
 }
 
 float GGX_normal_distribution(float alpha, float NoH)
@@ -250,10 +245,10 @@ inline Color RenderKernel::cook_torrance_brdf(const SimpleMaterial& material, co
 
     Vector halfway_vector = normalize(view_direction + to_light_direction);
 
-    float NoV = sycl::max(0.0f, dot(surface_normal, view_direction));
-    float NoL = sycl::max(0.0f, dot(surface_normal, to_light_direction));
-    float NoH = sycl::max(0.0f, dot(surface_normal, halfway_vector));
-    float VoH = sycl::max(0.0f, dot(halfway_vector, view_direction));
+    float NoV = std::max(0.0f, dot(surface_normal, view_direction));
+    float NoL = std::max(0.0f, dot(surface_normal, to_light_direction));
+    float NoH = std::max(0.0f, dot(surface_normal, halfway_vector));
+    float VoH = std::max(0.0f, dot(halfway_vector, view_direction));
 
     if (NoV > 0.0f && NoL > 0.0f && NoH > 0.0f)
     {
@@ -287,7 +282,7 @@ inline Color RenderKernel::cook_torrance_brdf(const SimpleMaterial& material, co
 }
 
 Color fresnelSchlick(Color F0, float cosTheta) {
-  return F0 + (Color(1.0f) - F0) * sycl::pow(1.0f - cosTheta, 5.0f);
+  return F0 + (Color(1.0f) - F0) * std::pow(1.0f - cosTheta, 5.0f);
 }
 
 float D_GGX(float alpha, float NoH) {
@@ -299,7 +294,7 @@ float D_GGX(float alpha, float NoH) {
 
 float G1_GGX_Schlick(float NoV, float alpha) {
   float k = alpha / 2.0f;
-  return sycl::max(NoV, 0.001f) / (NoV * (1.0f - k) + k);
+  return std::max(NoV, 0.001f) / (NoV * (1.0f - k) + k);
 }
 
 float G_Smith(float alpha, float NoV, float NoL) {
@@ -316,10 +311,10 @@ inline Color RenderKernel::cook_torrance_brdf_importance_sample(const SimpleMate
     float rand2 = random_number_generator();
 
     float phi = 2.0f * (float)M_PI * rand1;
-    float theta = sycl::acos((1.0f - rand2) / (rand2 * (alpha * alpha - 1.0f) + 1.0f));
-    float sin_theta = sycl::sin(theta);
+    float theta = std::acos((1.0f - rand2) / (rand2 * (alpha * alpha - 1.0f) + 1.0f));
+    float sin_theta = std::sin(theta);
 
-    Vector microfacet_normal_local_space = Vector(sycl::cos(phi) * sin_theta, sycl::sin(phi) * sin_theta, sycl::cos(theta));
+    Vector microfacet_normal_local_space = Vector(std::cos(phi) * sin_theta, std::sin(phi) * sin_theta, std::cos(theta));
     Vector microfacet_normal = rotate_vector_around_normal(surface_normal, microfacet_normal_local_space);
     if (dot(microfacet_normal, surface_normal) < 0.0f)
         //The microfacet normal that we sampled was under the surface, it can happen
@@ -331,10 +326,10 @@ inline Color RenderKernel::cook_torrance_brdf_importance_sample(const SimpleMate
     Color brdf_color = Color(0.0f, 0.0f, 0.0f);
     Color base_color = material.diffuse;
 
-    float NoV = sycl::max(0.0f, dot(surface_normal, view_direction));
-    float NoL = sycl::max(0.0f, dot(surface_normal, to_light_direction));
-    float NoH = sycl::max(0.0f, dot(surface_normal, halfway_vector));
-    float VoH = sycl::max(0.0f, dot(halfway_vector, view_direction));
+    float NoV = std::max(0.0f, dot(surface_normal, view_direction));
+    float NoL = std::max(0.0f, dot(surface_normal, to_light_direction));
+    float NoH = std::max(0.0f, dot(surface_normal, halfway_vector));
+    float VoH = std::max(0.0f, dot(halfway_vector, view_direction));
 
     if (NoV > 0.0f && NoL > 0.0f && NoH > 0.0f)
     {
@@ -368,26 +363,19 @@ inline Color RenderKernel::cook_torrance_brdf_importance_sample(const SimpleMate
 
 bool RenderKernel::intersect_scene(const Ray& ray, HitInfo& closest_hit_info) const
 {
-    float closest_intersection_distance = -1.0f;
-    bool inter_found = false;
+    closest_hit_info.t = -1.0f;
 
     for (int i = 0; i < m_triangle_buffer_access.size(); i++)
     {
         const Triangle& triangle = m_triangle_buffer_access[i];
 
         HitInfo hit_info;
-        triangle.intersect(ray, hit_info);
-        if (hit_info.t > 0)
+        if(triangle.intersect(ray, hit_info))
         {
-            hit_info.material_index = m_materials_indices_buffer[i];
-            //m_out_stream << hit_info << sycl::endl;
-            if (hit_info.t < closest_intersection_distance || !inter_found)
+            if (hit_info.t < closest_hit_info.t || closest_hit_info.t == -1.0f)
             {
-                hit_info.material_index = m_materials_indices_buffer[i];
-                closest_intersection_distance = hit_info.t;
                 closest_hit_info = hit_info;
-
-                inter_found = true;
+                closest_hit_info.material_index = m_materials_indices_buffer[i];
             }
         }
     }
@@ -398,91 +386,106 @@ bool RenderKernel::intersect_scene(const Ray& ray, HitInfo& closest_hit_info) co
 
         HitInfo hit_info;
         if (sphere.intersect(ray, hit_info))
-        {
-            if (hit_info.t < closest_intersection_distance || !inter_found)
-            {
-                closest_intersection_distance = hit_info.t;
+            if (hit_info.t < closest_hit_info.t || closest_hit_info.t == -1.0f)
                 closest_hit_info = hit_info;
-
-                inter_found = true;
-            }
-        }
     }
 
-    return inter_found;// closest_hit_info.t != -1.0f;
+    return closest_hit_info.t > 0.0f;
 }
+
+/*
+* Flat BVH intersection for the GPU
+*/
+//inline bool RenderKernel::intersect_scene_bvh(const Ray& ray, HitInfo& closest_hit_info) const
+//{
+//    closest_hit_info.t = -1.0f;
+//
+//    FlattenedBVH::Stack stack;
+//    stack.push(0);//Pushing the root of the BVH
+//
+//    std::array<float, BVHConstants::PLANES_COUNT> denoms;
+//    std::array<float, BVHConstants::PLANES_COUNT> numers;
+//
+//    for (int i = 0; i < BVHConstants::PLANES_COUNT; i++)
+//    {
+//        denoms[i] = dot(BoundingVolume::PLANE_NORMALS[i], ray.direction);
+//        numers[i] = dot(BoundingVolume::PLANE_NORMALS[i], Vector(ray.origin));
+//    }
+//
+//    float closest_intersection_distance = -1;
+//    while (!stack.empty())
+//    {
+//        int node_index = stack.pop();
+//        const FlattenedBVH::FlattenedNode& node = m_bvh_nodes[node_index];
+//
+//        if (node.intersect_volume(denoms, numers))
+//        {
+//            if (node.is_leaf)
+//            {
+//                for (int i = 0; i < node.nb_triangles; i++)
+//                {
+//                    int triangle_index = node.triangles_indices[i];
+//
+//                    HitInfo local_hit_info;
+//                    if (m_triangle_buffer_access[triangle_index].intersect(ray, local_hit_info))
+//                    {
+//                        if (closest_intersection_distance > local_hit_info.t || closest_intersection_distance == -1)
+//                        {
+//                            closest_intersection_distance = local_hit_info.t;
+//                            closest_hit_info = local_hit_info;
+//                            closest_hit_info.material_index = m_materials_indices_buffer[triangle_index];
+//                        }
+//                    }
+//                }
+//            }
+//            else
+//            {
+//                stack.push(node.children[0]);
+//                stack.push(node.children[1]);
+//                stack.push(node.children[2]);
+//                stack.push(node.children[3]);
+//                stack.push(node.children[4]);
+//                stack.push(node.children[5]);
+//                stack.push(node.children[6]);
+//                stack.push(node.children[7]);
+//            }
+//        }
+//    }
+//
+//    for (int i = 0; i < m_sphere_buffer.size(); i++)
+//    {
+//        const Sphere& sphere = m_sphere_buffer[i];
+//        HitInfo hit_info;
+//        if (sphere.intersect(ray, hit_info))
+//        {
+//            if (hit_info.t < closest_intersection_distance || closest_intersection_distance == -1.0f)
+//            {
+//                closest_intersection_distance = hit_info.t;
+//                closest_hit_info = hit_info;
+//            }
+//        }
+//    }
+//
+//    return closest_hit_info.t > -1.0f;
+//}
 
 inline bool RenderKernel::intersect_scene_bvh(const Ray& ray, HitInfo& closest_hit_info) const
 {
-    closest_hit_info.t = -1.0f;
+    closest_hit_info.t == -1.0f;
 
-    FlattenedBVH::Stack stack;
-    stack.push(0);//Pushing the root of the BVH
-
-    sycl::marray<float, BVHConstants::PLANES_COUNT> denoms;
-    sycl::marray<float, BVHConstants::PLANES_COUNT> numers;
-
-    for (int i = 0; i < BVHConstants::PLANES_COUNT; i++)
-    {
-        denoms[i] = dot(BVH_PLANE_NORMALS[i], ray.direction);
-        numers[i] = dot(BVH_PLANE_NORMALS[i], Vector(ray.origin));
-    }
-
-    float closest_intersection_distance = -1;
-    while (!stack.empty())
-    {
-        int node_index = stack.pop();
-        const FlattenedBVH::FlattenedNode& node = m_bvh_nodes[node_index];
-
-        if (node.intersect_volume(denoms, numers))
-        {
-            if (node.is_leaf)
-            {
-                for (int i = 0; i < node.nb_triangles; i++)
-                {
-                    int triangle_index = node.triangles_indices[i];
-
-                    HitInfo local_hit_info;
-                    if (m_triangle_buffer_access[triangle_index].intersect(ray, local_hit_info))
-                    {
-                        if (closest_intersection_distance > local_hit_info.t || closest_intersection_distance == -1)
-                        {
-                            closest_intersection_distance = local_hit_info.t;
-                            closest_hit_info = local_hit_info;
-                            closest_hit_info.material_index = m_materials_indices_buffer[triangle_index];
-                        }
-                    }
-                }
-            }
-            else
-            {
-                stack.push(node.children[0]);
-                stack.push(node.children[1]);
-                stack.push(node.children[2]);
-                stack.push(node.children[3]);
-                stack.push(node.children[4]);
-                stack.push(node.children[5]);
-                stack.push(node.children[6]);
-                stack.push(node.children[7]);
-            }
-        }
-    }
+    bool inter_found = m_bvh.intersect(ray, closest_hit_info);
 
     for (int i = 0; i < m_sphere_buffer.size(); i++)
     {
         const Sphere& sphere = m_sphere_buffer[i];
+
         HitInfo hit_info;
         if (sphere.intersect(ray, hit_info))
-        {
-            if (hit_info.t < closest_intersection_distance || closest_intersection_distance == -1.0f)
-            {
-                closest_intersection_distance = hit_info.t;
+            if (hit_info.t < closest_hit_info.t || closest_hit_info.t == -1.0f)
                 closest_hit_info = hit_info;
-            }
-        }
     }
 
-    return closest_hit_info.t > -1.0f;
+    return inter_found;
 }
 
 inline bool RenderKernel::INTERSECT_SCENE(const Ray& ray, HitInfo& hit_info) const
@@ -503,7 +506,7 @@ inline Point RenderKernel::sample_random_point_on_lights(xorshift32_generator& r
     float rand_1 = random_number_generator();
     float rand_2 = random_number_generator();
 
-    float sqrt_r1 = sycl::sqrt(rand_1);
+    float sqrt_r1 = std::sqrt(rand_1);
     float u = 1.0f - sqrt_r1;
     float v = (1.0f - rand_2) * sqrt_r1;
 
