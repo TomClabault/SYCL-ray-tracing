@@ -2,8 +2,8 @@
 #include <chrono>
 #include <cmath>
 
+#include <OpenImageDenoise/oidn.hpp>
 #include <rapidobj.hpp>
-
 #include <stb_image_write.h>
 
 #include "bvh.h"
@@ -33,6 +33,53 @@ Sphere add_sphere_to_scene(ParsedOBJ& parsed_obj, const Point& center, float rad
 int dichotomie(std::vector<float> bins, float random)
 {
     return 0;
+}
+
+void oidn_denoise(Image& image)
+{
+    // Create an Open Image Denoise device
+    oidn::DeviceRef device = oidn::newDevice(); // CPU or GPU if available
+    device.commit();
+
+
+    // Create buffers for input/output images accessible by both host (CPU) and device (CPU/GPU)
+    int width = image.width();
+    int height = image.height();
+
+    oidn::BufferRef colorBuf = device.newBuffer(width * height * 3 * sizeof(float));
+    // Create a filter for denoising a beauty (color) image using optional auxiliary images too
+    // This can be an expensive operation, so try no to create a new filter for every image!
+    oidn::FilterRef filter = device.newFilter("RT"); // generic ray tracing filter
+    filter.setImage("color", colorBuf, oidn::Format::Float3, width, height); // beauty
+    filter.setImage("output", colorBuf, oidn::Format::Float3, width, height); // denoised beauty
+    filter.set("hdr", true); // beauty image is HDR
+    filter.commit();
+    // Fill the input image buffers
+    float* colorPtr = (float*)colorBuf.getData();
+    std::vector<float> image_rgb(width * height * 3);
+    for (int y = 0; y < height; y++)
+        for (int x = 0; x < width; x++)
+        {
+            int index = y * width + x;
+
+            colorPtr[index * 3 + 0] = image[index].r;
+            colorPtr[index * 3 + 1] = image[index].g;
+            colorPtr[index * 3 + 2] = image[index].b;
+        }
+    // Filter the beauty image
+    filter.execute();
+
+    colorPtr = (float*)colorBuf.getData();
+    for (int y = 0; y < height; y++)
+        for (int x = 0; x < width; x++)
+        {
+            int index = y * width + x;
+            image[index] = Color(colorPtr[index * 3 + 0], colorPtr[index * 3 + 1], colorPtr[index * 3 + 2]);
+        }
+
+    const char* errorMessage;
+    if (device.getError(errorMessage) != oidn::Error::None)
+        std::cout << "Error: " << errorMessage << std::endl;
 }
 
 int main(int argc, char* argv[])
@@ -76,8 +123,8 @@ int main(int argc, char* argv[])
         */
     }
 
-    const int width = 1280;
-    const int height = 720;
+    const int width = 3840;
+    const int height = 2160;
 
     Image image(width, height);
 
@@ -115,6 +162,8 @@ int main(int argc, char* argv[])
 
     auto stop = std::chrono::high_resolution_clock::now();
     std::cout << std::chrono::duration_cast<std::chrono::milliseconds>(stop - start).count() << "ms" << std::endl;
+
+    oidn_denoise(image);
 
     write_image_png(image, "../TP_RT_output.png");
 
