@@ -143,7 +143,6 @@ int main(int argc, char* argv[])
     std::vector<Sphere> spheres;
 
     BVH bvh(&parsed_obj.triangles);
-    //FlattenedBVH flat_bvh = bvh.flatten();
 
     std::vector<Triangle> triangle_buffer = parsed_obj.triangles;
     std::vector<SimpleMaterial> materials_buffer = parsed_obj.materials;
