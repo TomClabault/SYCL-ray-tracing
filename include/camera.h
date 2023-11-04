@@ -10,6 +10,7 @@
 struct Camera
 {
     static const Transform DEFAULT_COORDINATES_SYSTEM;
+    static const Camera CORNELL_BOX_CAMERA, PBRT_DRAGON_CAMERA;
 
     Camera() : view_matrix(DEFAULT_COORDINATES_SYSTEM)
     {

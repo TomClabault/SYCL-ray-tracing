@@ -81,7 +81,7 @@ public:
 
         void insert(const std::vector<Triangle>& triangles_geometry, int triangle_id_to_insert, int current_depth, int max_depth, int leaf_max_obj_count)
         {
-            bool depth_exceeded = current_depth == max_depth;
+            bool depth_exceeded = max_depth != -1 && current_depth == max_depth;
 
             if (_is_leaf || depth_exceeded)
             {
@@ -263,7 +263,7 @@ public:
 
 public:
     BVH();
-    BVH(std::vector<Triangle>* triangles, int max_depth = 10, int leaf_max_obj_count = 8);
+    BVH(std::vector<Triangle>* triangles, int max_depth = -1, int leaf_max_obj_count = 8);
     ~BVH();
 
     void operator=(BVH&& bvh);

@@ -3,3 +3,9 @@ CMakeLists.txt.user
 TP_RT*.png
 
 build*
+data/OBJs/Projects/
+data/Skyspheres/evening_road_01_puresky_8k.hdr
+oidn/bin/
+oidn/doc/
+oidn/lib/
+

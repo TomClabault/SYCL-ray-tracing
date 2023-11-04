@@ -111,34 +111,37 @@ void RenderKernel::ray_trace_pixel(int x, int y) const
                     // ------------------------------------- //
                     // ---------- Direct lighting ---------- //
                     // ------------------------------------- //
-                    float light_sample_pdf;
-                    LightSourceInformation light_source_info;
-                    Point random_light_point = sample_random_point_on_lights(random_number_generator, light_sample_pdf, light_source_info);
-                    Point shadow_ray_origin = closest_hit_info.inter_point + closest_hit_info.normal_at_intersection * 1.0e-4f;
-                    Vector shadow_ray_direction = random_light_point - shadow_ray_origin;
-                    float distance_to_light = length(shadow_ray_direction);
-                    Vector shadow_ray_direction_normalized = normalize(shadow_ray_direction);
-
-                    Ray shadow_ray(shadow_ray_origin, shadow_ray_direction_normalized);
-
-                    bool in_shadow = evaluate_shadow_ray(shadow_ray, distance_to_light);
-
                     Color radiance = Color(0.0f, 0.0f, 0.0f);
-                    if (!in_shadow)
+                    if (m_emissive_triangle_indices_buffer.size() > 0)
                     {
-                        const SimpleMaterial& emissive_triangle_material = m_materials_buffer_access[m_materials_indices_buffer[light_source_info.emissive_triangle_index]];
+                        float light_sample_pdf;
+                        LightSourceInformation light_source_info;
+                        Point random_light_point = sample_random_point_on_lights(random_number_generator, light_sample_pdf, light_source_info);
+                        Point shadow_ray_origin = closest_hit_info.inter_point + closest_hit_info.normal_at_intersection * 1.0e-4f;
+                        Vector shadow_ray_direction = random_light_point - shadow_ray_origin;
+                        float distance_to_light = length(shadow_ray_direction);
+                        Vector shadow_ray_direction_normalized = normalize(shadow_ray_direction);
 
-                        radiance = emissive_triangle_material.emission;
-                        //Cosine angle on the illuminated surface
-                        radiance *= std::max(dot(closest_hit_info.normal_at_intersection, shadow_ray_direction_normalized), 0.0f);
-                        //Cosine angle on the light surface
-                        radiance *= std::max(dot(light_source_info.light_source_normal, -shadow_ray_direction_normalized), 0.0f);
-                        //Falloff of the light intensity with the distance squared
-                        radiance /= distance_to_light * distance_to_light;
-                        //PDF: Probability of having chosen this point on this exact light source
-                        radiance /= light_sample_pdf;
-                        //BRDF of the illuminated surface
-                        radiance *= cook_torrance_brdf(material, shadow_ray.direction, -ray.direction, closest_hit_info.normal_at_intersection);
+                        Ray shadow_ray(shadow_ray_origin, shadow_ray_direction_normalized);
+
+                        bool in_shadow = evaluate_shadow_ray(shadow_ray, distance_to_light);
+
+                        if (!in_shadow)
+                        {
+                            const SimpleMaterial& emissive_triangle_material = m_materials_buffer_access[m_materials_indices_buffer[light_source_info.emissive_triangle_index]];
+
+                            radiance = emissive_triangle_material.emission;
+                            //Cosine angle on the illuminated surface
+                            radiance *= std::max(dot(closest_hit_info.normal_at_intersection, shadow_ray_direction_normalized), 0.0f);
+                            //Cosine angle on the light surface
+                            radiance *= std::max(dot(light_source_info.light_source_normal, -shadow_ray_direction_normalized), 0.0f);
+                            //Falloff of the light intensity with the distance squared
+                            radiance /= distance_to_light * distance_to_light;
+                            //PDF: Probability of having chosen this point on this exact light source
+                            radiance /= light_sample_pdf;
+                            //BRDF of the illuminated surface
+                            radiance *= cook_torrance_brdf(material, shadow_ray.direction, -ray.direction, closest_hit_info.normal_at_intersection);
+                        }
                     }
 
                     // --------------------------------------- //
@@ -187,7 +190,7 @@ void RenderKernel::ray_trace_pixel(int x, int y) const
     m_frame_buffer_access[y * m_width + x] += final_color;
 
     const float gamma = 2.2f;
-    const float exposure = 2.5f;
+    const float exposure = 0.75f;
     Color hdrColor = m_frame_buffer_access[y * m_width + x];
 
     //Exposure tone mapping

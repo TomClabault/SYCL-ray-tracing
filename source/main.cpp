@@ -35,7 +35,10 @@ int dichotomie(std::vector<float> bins, float random)
     return 0;
 }
 
-void oidn_denoise(Image& image)
+/*
+ * A blend factor of 1 gives only the noisy image. 0 only the denoised image
+ */
+void oidn_denoise(Image& image, Image& output, float blend_factor)
 {
     // Create an Open Image Denoise device
     oidn::DeviceRef device = oidn::newDevice(); // CPU or GPU if available
@@ -56,7 +59,6 @@ void oidn_denoise(Image& image)
     filter.commit();
     // Fill the input image buffers
     float* colorPtr = (float*)colorBuf.getData();
-    std::vector<float> image_rgb(width * height * 3);
     for (int y = 0; y < height; y++)
         for (int x = 0; x < width; x++)
         {
@@ -67,14 +69,20 @@ void oidn_denoise(Image& image)
             colorPtr[index * 3 + 2] = image[index].b;
         }
     // Filter the beauty image
+
     filter.execute();
 
-    colorPtr = (float*)colorBuf.getData();
+    float* denoised_ptr = (float*)colorBuf.getData();
     for (int y = 0; y < height; y++)
         for (int x = 0; x < width; x++)
         {
             int index = y * width + x;
-            image[index] = Color(colorPtr[index * 3 + 0], colorPtr[index * 3 + 1], colorPtr[index * 3 + 2]);
+
+            Color color = blend_factor * Color(denoised_ptr[index * 3 + 0], denoised_ptr[index * 3 + 1], denoised_ptr[index * 3 + 2]) 
+                + (1.0f - blend_factor) * image[index];
+            color.a = 1.0f;
+
+            output[index] = color;
         }
 
     const char* errorMessage;
@@ -123,18 +131,19 @@ int main(int argc, char* argv[])
         */
     }
 
-    const int width = 3840;
-    const int height = 2160;
+    const int width = 2000;
+    const int height = 2000;
 
     Image image(width, height);
 
-    ParsedOBJ parsed_obj = Utils::parse_obj("../SYCL-ray-tracing/data/OBJs/cornell_pbr.obj");
+    ParsedOBJ parsed_obj = Utils::parse_obj("../SYCL-ray-tracing/data/OBJs/pbrt_dragon.obj");
 
-    Sphere sphere = add_sphere_to_scene(parsed_obj, Point(0.3275, 0.7, 0.3725), 0.2, SimpleMaterial {Color(0.0f), Color(1.0f, 0.71, 0.29), 1.0f, 0.4f}, parsed_obj.triangles.size());
-    std::vector<Sphere> spheres = { sphere };
+    //Sphere sphere = add_sphere_to_scene(parsed_obj, Point(0.3275, 0.7, 0.3725), 0.2, SimpleMaterial {Color(0.0f), Color(1.0f, 0.71, 0.29), 1.0f, 0.4f}, parsed_obj.triangles.size());
+    //std::vector<Sphere> spheres = { sphere };
+    std::vector<Sphere> spheres;
 
     BVH bvh(&parsed_obj.triangles);
-    FlattenedBVH flat_bvh = bvh.flatten();
+    //FlattenedBVH flat_bvh = bvh.flatten();
 
     std::vector<Triangle> triangle_buffer = parsed_obj.triangles;
     std::vector<SimpleMaterial> materials_buffer = parsed_obj.materials;
@@ -157,15 +166,18 @@ int main(int argc, char* argv[])
         sphere_buffer,
         bvh,
         skysphere_data);
-    render_kernel.set_camera(Camera(45, Translation(0, 1, 3.5)));
+    //render_kernel.set_camera(Camera::CORNELL_BOX_CAMERA);
+    render_kernel.set_camera(Camera::PBRT_DRAGON_CAMERA);
+
     render_kernel.render();
 
     auto stop = std::chrono::high_resolution_clock::now();
     std::cout << std::chrono::duration_cast<std::chrono::milliseconds>(stop - start).count() << "ms" << std::endl;
 
-    oidn_denoise(image);
+    Image image_denoised_08(image.width(), image.height());
+    oidn_denoise(image, image_denoised_08, 0.8);
 
-    write_image_png(image, "../TP_RT_output.png");
+    write_image_png(image_denoised_08, "../TP_RT_output_good_08_exp0.75.png");
 
     return 0;
 }

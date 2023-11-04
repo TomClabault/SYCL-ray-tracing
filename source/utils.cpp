@@ -47,9 +47,16 @@ ParsedOBJ Utils::parse_obj(const std::string& filepath)
 
             int mesh_triangle_index = i / 3;
             int triangle_material_index = mesh.material_ids[mesh_triangle_index];
-            materials_indices_buffer.push_back(triangle_material_index);
+            //Always go +1 because 0 is the default material. This also has for effect
+            //to transform the -1 material index (on material) to 0 which is the default
+            //material
+            materials_indices_buffer.push_back(triangle_material_index + 1);
 
-            rapidobj::Float3 emission = rapidobj_result.materials[triangle_material_index].emission;
+            rapidobj::Float3 emission;
+            if (triangle_material_index == -1)
+                emission = rapidobj::Float3{ 0, 0, 0 };
+            else
+                emission = rapidobj_result.materials[triangle_material_index].emission;
             if (emission[0] > 0 || emission[1] > 0 || emission[2] > 0)
             {
                 //This is an emissive triangle
@@ -62,6 +69,7 @@ ParsedOBJ Utils::parse_obj(const std::string& filepath)
 
     //Computing SimpleMaterials
     std::vector<SimpleMaterial>& materials_buffer = parsed_obj.materials;
+    materials_buffer.push_back(SimpleMaterial{ Color(1.0f, 0.0f, 1.0f), Color(), 0.0f, 1.0f });
     for (const rapidobj::Material& material : rapidobj_result.materials)
         materials_buffer.push_back(SimpleMaterial {Color(material.emission), Color(material.diffuse), material.metallic, material.roughness});
 
