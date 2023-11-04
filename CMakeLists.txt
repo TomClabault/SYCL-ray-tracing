@@ -26,9 +26,7 @@ add_executable(SYCL_RayTracing
     include/vec.h
 
     stbi/stb_image.h
-    stbi/stb_image_write.h
-
-    rapidobj/rapidobj.hpp)
+    stbi/stb_image_write.h)
 
 set_property(TARGET SYCL_RayTracing PROPERTY CXX_STANDARD 17)
 
