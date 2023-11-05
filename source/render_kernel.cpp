@@ -148,13 +148,17 @@ void RenderKernel::ray_trace_pixel(int x, int y) const
                     // ---------- Indirect lighting ---------- //
                     // --------------------------------------- //
 
-                    Vector random_bounce_direction;
+                    //float pdf;
+                    Vector random_bounce_direction;// = cosine_weighted_direction_around_normal(closest_hit_info.normal_at_intersection, pdf, random_number_generator);
                     Color brdf = cook_torrance_brdf_importance_sample(material, -ray.direction, closest_hit_info.normal_at_intersection, random_bounce_direction, random_number_generator);
+                    //Color brdf = cook_torrance_brdf(material, random_bounce_direction, -ray.direction, closest_hit_info.normal_at_intersection);
                     throughput *= brdf * std::max(0.0f, dot(random_bounce_direction, closest_hit_info.normal_at_intersection));
                     
                     if (bounce == 0)
                         sample_color += material.emission;
                     sample_color += radiance * throughput;
+
+                    //throughput /= pdf;
 
                     Point new_ray_origin = closest_hit_info.inter_point + closest_hit_info.normal_at_intersection * 1.0e-4f;
                     ray = Ray(new_ray_origin, random_bounce_direction);

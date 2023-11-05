@@ -10,6 +10,8 @@
 #include <iostream>
 #include <string>
 
+#include <OpenImageDenoise/oidn.hpp>
+
 ParsedOBJ Utils::parse_obj(const std::string& filepath)
 {
     ParsedOBJ parsed_obj;
@@ -97,6 +99,60 @@ Image Utils::read_image_float(const std::string& filepath, int& image_width, int
             output[index] = pow(Color(pixels[index * 3 + 0], pixels[index * 3 + 1], pixels[index * 3 + 2], 0.0f), 2.2f);
         }
     }
+
+    return output;
+}
+
+Image Utils::OIDN_denoise(const Image& image, float blend_factor)
+{
+    // Create an Open Image Denoise device
+    oidn::DeviceRef device = oidn::newDevice(); // CPU or GPU if available
+    device.commit();
+
+    // Create buffers for input/output images accessible by both host (CPU) and device (CPU/GPU)
+    int width = image.width();
+    int height = image.height();
+
+    oidn::BufferRef colorBuf = device.newBuffer(width * height * 3 * sizeof(float));
+    // Create a filter for denoising a beauty (color) image using optional auxiliary images too
+    // This can be an expensive operation, so try no to create a new filter for every image!
+    oidn::FilterRef filter = device.newFilter("RT"); // generic ray tracing filter
+    filter.setImage("color", colorBuf, oidn::Format::Float3, width, height); // beauty
+    filter.setImage("output", colorBuf, oidn::Format::Float3, width, height); // denoised beauty
+    filter.set("hdr", true); // beauty image is HDR
+    filter.commit();
+    // Fill the input image buffers
+    float* colorPtr = (float*)colorBuf.getData();
+    for (int y = 0; y < height; y++)
+        for (int x = 0; x < width; x++)
+        {
+            int index = y * width + x;
+
+            colorPtr[index * 3 + 0] = image[index].r;
+            colorPtr[index * 3 + 1] = image[index].g;
+            colorPtr[index * 3 + 2] = image[index].b;
+        }
+    // Filter the beauty image
+
+    filter.execute();
+
+    float* denoised_ptr = (float*)colorBuf.getData();
+    Image output(image.width(), image.height());
+    for (int y = 0; y < height; y++)
+        for (int x = 0; x < width; x++)
+        {
+            int index = y * width + x;
+
+            Color color = blend_factor * Color(denoised_ptr[index * 3 + 0], denoised_ptr[index * 3 + 1], denoised_ptr[index * 3 + 2])
+                + (1.0f - blend_factor) * image[index];
+            color.a = 1.0f;
+
+            output[index] = color;
+        }
+
+    const char* errorMessage;
+    if (device.getError(errorMessage) != oidn::Error::None)
+        std::cout << "Error: " << errorMessage << std::endl;
 
     return output;
 }
