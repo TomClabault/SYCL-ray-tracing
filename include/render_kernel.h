@@ -10,8 +10,8 @@
 #include "triangle.h"
 #include "xorshift.h"
 
-#define SAMPLES_PER_KERNEL 128
-#define MAX_BOUNCES 50
+#define SAMPLES_PER_KERNEL 16
+#define MAX_BOUNCES 15
 #define USE_BVH 1
 
 #define TILE_SIZE_X 8
@@ -34,7 +34,8 @@ public:
                  const std::vector<int>& materials_indices_buffer_accessor,
                  const std::vector<Sphere>& analytic_spheres_buffer,
                  BVH& bvh,
-                 Image& skysphere) : 
+                 const Image& skysphere,
+                 const std::vector<ImageBin>& env_map_bins) : 
         m_width(width), m_height(height),
         m_frame_buffer_access(image_buffer),
         m_triangle_buffer_access(triangle_buffer_accessor),
@@ -43,7 +44,8 @@ public:
         m_materials_indices_buffer(materials_indices_buffer_accessor),
         m_sphere_buffer(analytic_spheres_buffer),
         m_bvh(bvh),
-        m_skysphere(skysphere) {}
+        m_skysphere(skysphere),
+        m_env_map_bins(env_map_bins) {}
 
     void set_camera(Camera camera) { m_camera = camera; }
 
@@ -58,30 +60,34 @@ public:
 
     Color lambertian_brdf(const SimpleMaterial& material, const Vector& to_light_direction, const Vector& view_direction, const Vector& surface_normal) const;
     Color cook_torrance_brdf(const SimpleMaterial& material, const Vector& to_light_direction, const Vector& view_direction, const Vector& surface_normal) const;
-    Color cook_torrance_brdf_importance_sample(const SimpleMaterial& material, const Vector& view_direction, const Vector& surface_normal, Vector& output_direction, xorshift32_generator& random_number_generator) const;
+    Color cook_torrance_brdf_importance_sample(const SimpleMaterial& material, const Vector& view_direction, const Vector& surface_normal, Vector& output_direction, float& pdf, xorshift32_generator& random_number_generator) const;
 
     bool intersect_scene(const Ray& ray, HitInfo& closest_hit_info) const;
     bool intersect_scene_bvh(const Ray& ray, HitInfo& closest_hit_info) const;
     bool INTERSECT_SCENE(const Ray& ray, HitInfo& hit_info)const ;
+
+    Color sample_environment_map_from_direction(const Vector& direction) const;
+    Color sample_environment_map(const Ray& ray, const HitInfo& closest_hit_info, const SimpleMaterial& material, xorshift32_generator& random_number_generator) const;
+    Color sample_light_sources(const Ray& ray, const HitInfo& closest_hit_info, const SimpleMaterial& material, xorshift32_generator& random_number_generator) const;
     Point sample_random_point_on_lights(xorshift32_generator& random_number_generator, float& pdf, LightSourceInformation& light_info) const;
     bool evaluate_shadow_ray(const Ray& ray, float t_max) const;
 
 private:
     int m_width, m_height;
-    int m_kernel_iteration;
 
     Image& m_frame_buffer_access;
 
-    std::vector<Triangle> m_triangle_buffer_access;
-    std::vector<SimpleMaterial> m_materials_buffer_access;
-    std::vector<int> m_emissive_triangle_indices_buffer;
-    std::vector<int> m_materials_indices_buffer;
+    const std::vector<Triangle>& m_triangle_buffer_access;
+    const std::vector<SimpleMaterial>& m_materials_buffer_access;
+    const std::vector<int>& m_emissive_triangle_indices_buffer;
+    const std::vector<int>& m_materials_indices_buffer;
 
-    std::vector<Sphere> m_sphere_buffer;
+    const std::vector<Sphere>& m_sphere_buffer;
 
-    BVH& m_bvh;
+    const BVH& m_bvh;
 
-    Image& m_skysphere;
+    const Image& m_skysphere;
+    const std::vector<ImageBin>& m_env_map_bins;
 
     Camera m_camera;
 };

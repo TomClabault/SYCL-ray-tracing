@@ -9,6 +9,11 @@
 
 #include "color.h"
 
+struct ImageBin
+{
+    int x0, x1;
+    int y0, y1;
+};
 
 //! \addtogroup image utilitaires pour manipuler des images
 ///@{
@@ -70,6 +75,29 @@ public:
     Color& operator[](int index)
     {
         return m_pixels[index];
+    }
+
+    float luminance_of_pixel(int x, int y) const
+    {
+        Color pixel = m_pixels[offset(x, y)];
+
+        return 0.3086 * pixel.r + 0.6094 * pixel.g + 0.0820 * pixel.b;
+    }
+
+    float luminance_of_area(int start_x, int start_y, int stop_x, int stop_y) const
+    {
+        float luminance = 0.0f;
+
+        for (int x = start_x; x < stop_x; x++)
+            for (int y = start_y; y < stop_y; y++)
+                luminance += luminance_of_pixel(x, y);
+
+        return luminance;
+    }
+
+    float luminance_of_area(const ImageBin& region) const
+    {
+        return luminance_of_area(region.x0, region.y0, region.x1, region.y1);
     }
     
     //! renvoie la couleur interpolee a la position (x, y) [0 .. width]x[0 .. height].

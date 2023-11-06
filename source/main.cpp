@@ -75,11 +75,11 @@ int main(int argc, char* argv[])
         */
     }
 
-    const int width = 1024;
-    const int height = 1024;
+    const int width = 256;
+    const int height = 256;
 
-    Image image(width, height);
 
+    std::cout << "Reading OBJ..." << std::endl;
     ParsedOBJ parsed_obj = Utils::parse_obj("../SYCL-ray-tracing/data/OBJs/pbrt_dragon.obj");
 
     //Sphere sphere = add_sphere_to_scene(parsed_obj, Point(0.3275, 0.7, 0.3725), 0.2, SimpleMaterial {Color(0.0f), Color(1.0f, 0.71, 0.29), 1.0f, 0.4f}, parsed_obj.triangles.size());
@@ -95,20 +95,25 @@ int main(int argc, char* argv[])
     std::vector<Sphere> sphere_buffer = spheres;
 
     int skysphere_width, skysphere_height;
+    std::cout << "Reading Environment Map..." << std::endl;
     Image skysphere_data = Utils::read_image_float("../SYCL-ray-tracing/data/Skyspheres/evening_road_01_puresky_8k.hdr", skysphere_width, skysphere_height);
+    std::cout << "Importance Sampling Environment Map..." << std::endl;
+    std::vector<ImageBin> skysphere_importance_bins = Utils::importance_split_skysphere(skysphere_data);
 
     std::cout << "[" << width << "x" << height << "]: " << SAMPLES_PER_KERNEL << " samples" << std::endl << std::endl;
 
     auto start = std::chrono::high_resolution_clock::now();
+    Image image_buffer(width, height);
     auto render_kernel = RenderKernel(width, height,
-        image,
+        image_buffer,
         triangle_buffer,
         materials_buffer,
         emissive_triangle_indices_buffer,
         materials_indices_buffer,
         sphere_buffer,
         bvh,
-        skysphere_data);
+        skysphere_data,
+        skysphere_importance_bins);
     //render_kernel.set_camera(Camera::CORNELL_BOX_CAMERA);
     render_kernel.set_camera(Camera::PBRT_DRAGON_CAMERA);
 
@@ -117,9 +122,9 @@ int main(int argc, char* argv[])
     auto stop = std::chrono::high_resolution_clock::now();
     std::cout << std::chrono::duration_cast<std::chrono::milliseconds>(stop - start).count() << "ms" << std::endl;
 
-    Image image_denoised_08 = Utils::OIDN_denoise(image, 0.8f);
+    Image image_denoised_08 = Utils::OIDN_denoise(image_buffer, 0.8f);
 
-    write_image_png(image, "../TP_RT_output_good_08_exp0.75.png");
+    write_image_png(image_buffer, "../TP_RT_output_good_08_exp0.75.png");
 
     return 0;
 }

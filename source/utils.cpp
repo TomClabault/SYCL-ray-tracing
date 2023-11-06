@@ -156,3 +156,54 @@ Image Utils::OIDN_denoise(const Image& image, float blend_factor)
 
     return output;
 }
+std::vector<ImageBin> Utils::importance_split_skysphere(const Image& skysphere, ImageBin current_region, float current_radiance, int minimum_bin_area, float minimum_bin_radiance)
+{
+    int horizontal_extent = current_region.x1 - current_region.x0;
+    int vertical_extent = current_region.y1 - current_region.y0;
+    int current_region_area = vertical_extent * vertical_extent;
+    if (current_radiance <= minimum_bin_radiance || current_region_area <= minimum_bin_area)
+        return std::vector<ImageBin> { current_region };
+
+    //Determining the largest for the split
+    //A vertical split means that the "cut line" is horizontal, 
+    //we're dividing the height by 2
+    bool vertical_split = horizontal_extent < vertical_extent;
+
+    ImageBin new_region_1;
+    ImageBin new_region_2;
+    if (vertical_split)
+    {
+        new_region_1 = ImageBin { current_region.x0, current_region.x1, 
+                                  current_region.y0, vertical_extent / 2 + current_region.y0};
+        new_region_2 = ImageBin { current_region.x0, current_region.x1, 
+                                  vertical_extent / 2 + current_region.y0, current_region.y1 };
+    }
+    else
+    {
+        new_region_1 = ImageBin{ current_region.x0, horizontal_extent / 2 + current_region.x0,
+                                 current_region.y0, current_region.y1 };
+        new_region_2 = ImageBin{ horizontal_extent / 2 + current_region.x0, current_region.x1,
+                                 current_region.y0, current_region.y1 };
+    }
+
+    float region_1_radiance = skysphere.luminance_of_area(new_region_1);
+    float region_2_radiance = skysphere.luminance_of_area(new_region_2);
+
+    std::vector<ImageBin> region_1_bins = importance_split_skysphere(skysphere, new_region_1, region_1_radiance, minimum_bin_area, minimum_bin_radiance);
+    std::vector<ImageBin> region_2_bins = importance_split_skysphere(skysphere, new_region_2, region_2_radiance, minimum_bin_area, minimum_bin_radiance);
+
+    std::vector<ImageBin> all_bins;
+    all_bins.insert(all_bins.end(), region_1_bins.begin(), region_1_bins.end());
+    all_bins.insert(all_bins.end(), region_2_bins.begin(), region_2_bins.end());
+
+    return all_bins;
+}
+
+std::vector<ImageBin> Utils::importance_split_skysphere(const Image& skysphere, int minimum_bin_area, float minimum_bin_radiance)
+{
+    ImageBin whole_image_region = ImageBin{ 0, skysphere.width(), 0, skysphere.height() };
+
+    float current_radiance = skysphere.luminance_of_area(whole_image_region);
+
+    return Utils::importance_split_skysphere(skysphere, whole_image_region, current_radiance, minimum_bin_area, minimum_bin_radiance);
+}
