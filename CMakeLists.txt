@@ -8,7 +8,7 @@ endif()
 
 project(SYCL_RayTracing LANGUAGES CXX)
 
-find_package(IntelDPCPP REQUIRED)
+#find_package(IntelDPCPP REQUIRED)
 
 file(GLOB SYCL_HEADERS "/opt/intel/oneapi/compiler/2023.2.1/linux/include/sycl/*.hpp" "/opt/intel/oneapi/compiler/2023.2.1/linux/include/sycl/CL/*.hpp")
 
@@ -16,6 +16,7 @@ add_executable(SYCL_RayTracing
     ${SYCL_HEADERS}
 
     source/bvh.cpp
+    source/camera.cpp
     source/color.cpp
     source/flattened_bvh.cpp
     source/image_io.cpp
@@ -24,7 +25,6 @@ add_executable(SYCL_RayTracing
     source/ray.cpp
     source/render_kernel.cpp
     source/tests.cpp
-    source/sphere.cpp
     source/triangle.cpp
     source/triangle.cpp
     source/utils.cpp
@@ -53,18 +53,29 @@ add_executable(SYCL_RayTracing
     stbi/stb_image.h
     stbi/stb_image_write.h
 
-    rapidobj/rapidobj.hpp)
+    rapidobj/rapidobj.hpp
+
+    oidn/include/OpenImageDenoise/oidn.hpp
+    oidn/include/OpenImageDenoise/oidn.h
+    oidn/include/OpenImageDenoise/config.h)
 
 set_property(TARGET SYCL_RayTracing PROPERTY CXX_STANDARD 17)
 
-set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -g -O0")
+set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -fopenmp")
+
+set(OIDN_LIB_DIR "/usr/local/lib/")
+set(OIDN_LIBRARIES "OpenImageDenoise")
 
 set(THREADS_PREFER_PTHREAD_FLAG ON)
-find_package(Threads REQUIRED)
-target_link_libraries(SYCL_RayTracing PRIVATE Threads::Threads)
+find_package(OpenMP)
+target_link_libraries(SYCL_RayTracing PRIVATE OpenMP::OpenMP_CXX ${OIDN_LIBRARIES})
+
+link_directories(${OIDN_LIB_DIR})
+
 
 target_include_directories(SYCL_RayTracing PRIVATE "/opt/intel/oneapi/compiler/2023.2.1/linux/include/")
 target_include_directories(SYCL_RayTracing PRIVATE "include/")
 target_include_directories(SYCL_RayTracing PRIVATE "stbi/")
 target_include_directories(SYCL_RayTracing PRIVATE "rapidobj/")
+target_include_directories(SYCL_RayTracing PRIVATE "oidn/include/")
 target_include_directories(SYCL_RayTracing PRIVATE ".")

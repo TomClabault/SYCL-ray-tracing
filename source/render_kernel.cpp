@@ -170,6 +170,7 @@ void RenderKernel::ray_trace_pixel(int x, int y) const
     m_frame_buffer_access[y * m_width + x] = gamma_corrected;
 }
 
+#include <atomic>
 #include <omp.h>
 void RenderKernel::render()
 {
