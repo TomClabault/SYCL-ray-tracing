@@ -31,7 +31,7 @@ protected:
 
 public:
     Image( ) : m_pixels(), m_width(0), m_height(0) {}
-    Image( const int w, const int h, const Color& color= Black() ) : m_pixels(w*h, color), m_width(w), m_height(h) {}
+    Image( const int w, const int h, const Color& color= Color::Black() ) : m_pixels(w*h, color), m_width(w), m_height(h) {}
     
     /*! renvoie une reference sur la couleur d'un pixel de l'image.
     permet de modifier et/ou de connaitre la couleur d'un pixel :

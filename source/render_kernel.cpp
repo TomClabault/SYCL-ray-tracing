@@ -609,22 +609,25 @@ Color RenderKernel::sample_light_sources(const Ray& ray, const HitInfo& closest_
         {
             const SimpleMaterial& emissive_triangle_material = m_materials_buffer_access[m_materials_indices_buffer[light_source_info.emissive_triangle_index]];
 
-            light_source_radiance_mis = emissive_triangle_material.emission;
+            light_sample_pdf *= distance_to_light * distance_to_light;
+            light_sample_pdf /= std::abs(dot(light_source_info.light_source_normal, -shadow_ray_direction_normalized));
+            
             //Cosine angle on the illuminated surface
-            light_source_radiance_mis *= std::max(dot(closest_hit_info.normal_at_intersection, shadow_ray_direction_normalized), 0.0f);
+            //light_source_radiance_mis *= std::max(dot(closest_hit_info.normal_at_intersection, shadow_ray_direction_normalized), 0.0f);
             //Cosine angle on the light surface
-            light_source_radiance_mis *= std::max(dot(light_source_info.light_source_normal, -shadow_ray_direction_normalized), 0.0f);
+            //light_source_radiance_mis *= std::max(dot(light_source_info.light_source_normal, -shadow_ray_direction_normalized), 0.0f);
             //Falloff of the light intensity with the distance squared
-            light_source_radiance_mis /= distance_to_light * distance_to_light;
+            //light_source_radiance_mis *= distance_to_light * distance_to_light;
             //PDF: Probability of having chosen this point on this exact light source
-            light_source_radiance_mis /= light_sample_pdf;
+            //light_source_radiance_mis /= light_sample_pdf;
             //BRDF of the illuminated surface
-            light_source_radiance_mis *= cook_torrance_brdf(material, shadow_ray.direction, -ray.direction, closest_hit_info.normal_at_intersection);
+            Color brdf = cook_torrance_brdf(material, shadow_ray.direction, -ray.direction, closest_hit_info.normal_at_intersection);
 
             float cook_torrance_pdf = cook_torrance_brdf_pdf(material, -ray.direction, shadow_ray_direction_normalized, closest_hit_info.normal_at_intersection);
             float mis_weight = power_heuristic(light_sample_pdf, cook_torrance_pdf);
 
-            light_source_radiance_mis *= mis_weight / light_sample_pdf;
+            Color Li = emissive_triangle_material.emission * std::max(dot(closest_hit_info.normal_at_intersection, shadow_ray_direction_normalized), 0.0f);
+            light_source_radiance_mis = Li * brdf * mis_weight / light_sample_pdf;
         }
     }
 
@@ -645,9 +648,11 @@ Color RenderKernel::sample_light_sources(const Ray& ray, const HitInfo& closest_
         Color emission = material.emission;
         if (emission.r > 0 || emission.g > 0 || emission.b > 0)
         {
-            float light_pdf = new_ray_hit_info.t * new_ray_hit_info.t;
-            light_pdf /= m_triangle_buffer_access[new_ray_hit_info.primitive_index].area();
-            light_pdf /= dot(new_ray_hit_info.normal_at_intersection, -sampled_brdf_direction);
+            float distance_squared = new_ray_hit_info.t * new_ray_hit_info.t;
+            float light_area = m_triangle_buffer_access[new_ray_hit_info.primitive_index].area();
+            float cos_angle = dot(new_ray_hit_info.normal_at_intersection, -sampled_brdf_direction);
+
+            float light_pdf = distance_squared / (light_area * cos_angle);
 
             float mis_weight = power_heuristic(direction_pdf, light_pdf);
             brdf_radiance_mis = brdf * emission * mis_weight / direction_pdf;

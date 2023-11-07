@@ -20,6 +20,11 @@ struct Color
     //! cree une couleur avec les memes composantes que color, mais remplace sa composante alpha (color.r, color.g, color.b, alpha).
     Color( const Color& color, const float alpha ) : r(color.r), g(color.g), b(color.b), a(alpha) {}  // remplace alpha.
 
+    inline bool operator==(const Color& other)
+    {
+        return r == other.r && g == other.g && b == other.b;
+    }
+
     inline Color& operator=(const Vector& vec)
     {
         r = vec.x;
@@ -75,40 +80,40 @@ struct Color
         return std::max(r, std::max(g, std::max(b, float(0))));
     }
 
+    static Color Black()
+    {
+        return Color(0, 0, 0);
+    }
+
+    static Color White()
+    {
+        return Color(1, 1, 1);
+    }
+
+    static Color Red()
+    {
+        return Color(1, 0, 0);
+    }
+
+    static Color Green()
+    {
+        return Color(0, 1, 0);
+    }
+
+    static Color Blue()
+    {
+        return Color(0, 0, 1);
+    }
+
+    static Color Yellow()
+    {
+        return Color(1, 1, 0);
+    }
+
     friend std::ostream& operator << (std::ostream& os, const Color& color);
     
     float r, g, b, a;
 };
-
-inline Color Black( )
-{
-    return Color(0, 0, 0);
-}
-
-inline Color White( )
-{
-    return Color(1, 1, 1);
-}
-
-inline Color Red( )
-{
-    return Color(1, 0, 0);
-}
-
-inline Color Green( )
-{
-    return Color(0, 1, 0);
-}
-
-inline Color Blue( )
-{
-    return Color(0, 0, 1);
-}
-
-inline Color Yellow( )
-{
-    return Color(1, 1, 0);
-}
 
 
 inline Color operator+ ( const Color& a, const Color& b )
