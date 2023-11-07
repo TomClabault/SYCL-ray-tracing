@@ -37,7 +37,7 @@ public:
                  const Image& skysphere,
                  const std::vector<ImageBin>& env_map_bins) : 
         m_width(width), m_height(height),
-        m_frame_buffer_access(image_buffer),
+        m_frame_buffer(image_buffer),
         m_triangle_buffer_access(triangle_buffer_accessor),
         m_materials_buffer_access(materials_buffer_accessor),
         m_emissive_triangle_indices_buffer(emissive_triangle_indices_buffer_accessor),
@@ -59,6 +59,7 @@ public:
     void render();
 
     Color lambertian_brdf(const SimpleMaterial& material, const Vector& to_light_direction, const Vector& view_direction, const Vector& surface_normal) const;
+    float cook_torrance_brdf_pdf(const SimpleMaterial& material, const Vector& view_direction, const Vector& to_light_direction, const Vector& surface_normal) const;
     Color cook_torrance_brdf(const SimpleMaterial& material, const Vector& to_light_direction, const Vector& view_direction, const Vector& surface_normal) const;
     Color cook_torrance_brdf_importance_sample(const SimpleMaterial& material, const Vector& view_direction, const Vector& surface_normal, Vector& output_direction, float& pdf, xorshift32_generator& random_number_generator) const;
 
@@ -75,7 +76,7 @@ public:
 private:
     int m_width, m_height;
 
-    Image& m_frame_buffer_access;
+    Image& m_frame_buffer;
 
     const std::vector<Triangle>& m_triangle_buffer_access;
     const std::vector<SimpleMaterial>& m_materials_buffer_access;

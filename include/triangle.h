@@ -59,6 +59,8 @@ struct Triangle
 			return false;
 	}
 
+    float area() const;
+
 	Point& operator[] (int index);
 	const Point& operator[] (int index) const;
 

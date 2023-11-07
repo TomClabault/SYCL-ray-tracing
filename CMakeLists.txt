@@ -61,7 +61,7 @@ add_executable(SYCL_RayTracing
 
 set_property(TARGET SYCL_RayTracing PROPERTY CXX_STANDARD 17)
 
-set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -fopenmp")
+set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS}")
 
 set(OIDN_LIB_DIR "/usr/local/lib/")
 set(OIDN_LIBRARIES "OpenImageDenoise")
