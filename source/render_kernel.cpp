@@ -649,7 +649,7 @@ Color RenderKernel::sample_light_sources(const Ray& ray, const HitInfo& closest_
             Color emission = material.emission;
             if (emission.r > 0 || emission.g > 0 || emission.b > 0)
             {
-                float distance_squared = length2(new_ray_hit_info.inter_point - new_ray.origin);// new_ray_hit_info.t* new_ray_hit_info.t;
+                float distance_squared = new_ray_hit_info.t* new_ray_hit_info.t;
                 float light_area = m_triangle_buffer_access[new_ray_hit_info.primitive_index].area();
 
                 float light_pdf = distance_squared / (light_area * cos_angle);
