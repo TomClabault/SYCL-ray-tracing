@@ -596,6 +596,7 @@ Color RenderKernel::sample_light_sources(const Ray& ray, const HitInfo& closest_
         float light_sample_pdf;
         LightSourceInformation light_source_info;
         Point random_light_point = sample_random_point_on_lights(random_number_generator, light_sample_pdf, light_source_info);
+
         Point shadow_ray_origin = closest_hit_info.inter_point + closest_hit_info.normal_at_intersection * 1.0e-4f;
         Vector shadow_ray_direction = random_light_point - shadow_ray_origin;
         float distance_to_light = length(shadow_ray_direction);
@@ -603,31 +604,28 @@ Color RenderKernel::sample_light_sources(const Ray& ray, const HitInfo& closest_
 
         Ray shadow_ray(shadow_ray_origin, shadow_ray_direction_normalized);
 
-        bool in_shadow = evaluate_shadow_ray(shadow_ray, distance_to_light);
-
-        if (!in_shadow)
+        float dot_light_source = std::max(dot(light_source_info.light_source_normal, -shadow_ray_direction_normalized), 0.0f);
+        if (dot_light_source > 0.0f)
         {
-            const SimpleMaterial& emissive_triangle_material = m_materials_buffer_access[m_materials_indices_buffer[light_source_info.emissive_triangle_index]];
+            bool in_shadow = evaluate_shadow_ray(shadow_ray, distance_to_light);
 
-            light_sample_pdf *= distance_to_light * distance_to_light;
-            light_sample_pdf /= std::abs(dot(light_source_info.light_source_normal, -shadow_ray_direction_normalized));
-            
-            //Cosine angle on the illuminated surface
-            //light_source_radiance_mis *= std::max(dot(closest_hit_info.normal_at_intersection, shadow_ray_direction_normalized), 0.0f);
-            //Cosine angle on the light surface
-            //light_source_radiance_mis *= std::max(dot(light_source_info.light_source_normal, -shadow_ray_direction_normalized), 0.0f);
-            //Falloff of the light intensity with the distance squared
-            //light_source_radiance_mis *= distance_to_light * distance_to_light;
-            //PDF: Probability of having chosen this point on this exact light source
-            //light_source_radiance_mis /= light_sample_pdf;
-            //BRDF of the illuminated surface
-            Color brdf = cook_torrance_brdf(material, shadow_ray.direction, -ray.direction, closest_hit_info.normal_at_intersection);
+            if (!in_shadow)
+            {
+                const SimpleMaterial& emissive_triangle_material = m_materials_buffer_access[m_materials_indices_buffer[light_source_info.emissive_triangle_index]];
 
-            float cook_torrance_pdf = cook_torrance_brdf_pdf(material, -ray.direction, shadow_ray_direction_normalized, closest_hit_info.normal_at_intersection);
-            float mis_weight = power_heuristic(light_sample_pdf, cook_torrance_pdf);
+                light_sample_pdf *= distance_to_light * distance_to_light;
+                light_sample_pdf /= dot_light_source;
 
-            Color Li = emissive_triangle_material.emission * std::max(dot(closest_hit_info.normal_at_intersection, shadow_ray_direction_normalized), 0.0f);
-            light_source_radiance_mis = Li * brdf * mis_weight / light_sample_pdf;
+                Color brdf = cook_torrance_brdf(material, shadow_ray.direction, -ray.direction, closest_hit_info.normal_at_intersection);
+
+                float cook_torrance_pdf = cook_torrance_brdf_pdf(material, -ray.direction, shadow_ray_direction_normalized, closest_hit_info.normal_at_intersection);
+                float mis_weight = power_heuristic(light_sample_pdf, cook_torrance_pdf);
+
+                Color Li = emissive_triangle_material.emission * std::max(dot(closest_hit_info.normal_at_intersection, shadow_ray_direction_normalized), 0.0f);
+                float cosine_term = dot(closest_hit_info.normal_at_intersection, shadow_ray_direction_normalized);
+
+                light_source_radiance_mis = Li * cosine_term * brdf * mis_weight / light_sample_pdf;
+            }
         }
     }
 
@@ -642,23 +640,26 @@ Color RenderKernel::sample_light_sources(const Ray& ray, const HitInfo& closest_
     Color brdf_radiance_mis;
     if (inter_found)
     {
-        int material_index = m_materials_indices_buffer[new_ray_hit_info.primitive_index];
-        SimpleMaterial material = m_materials_buffer_access[material_index];
-
-        Color emission = material.emission;
-        if (emission.r > 0 || emission.g > 0 || emission.b > 0)
+        float cos_angle = std::max(dot(new_ray_hit_info.normal_at_intersection, -sampled_brdf_direction), 0.0f);
+        if (cos_angle > 0.0f)
         {
-            float distance_squared = new_ray_hit_info.t * new_ray_hit_info.t;
-            float light_area = m_triangle_buffer_access[new_ray_hit_info.primitive_index].area();
-            float cos_angle = dot(new_ray_hit_info.normal_at_intersection, -sampled_brdf_direction);
+            int material_index = m_materials_indices_buffer[new_ray_hit_info.primitive_index];
+            SimpleMaterial material = m_materials_buffer_access[material_index];
 
-            float light_pdf = distance_squared / (light_area * cos_angle);
+            Color emission = material.emission;
+            if (emission.r > 0 || emission.g > 0 || emission.b > 0)
+            {
+                float distance_squared = length2(new_ray_hit_info.inter_point - new_ray.origin);// new_ray_hit_info.t* new_ray_hit_info.t;
+                float light_area = m_triangle_buffer_access[new_ray_hit_info.primitive_index].area();
 
-            float mis_weight = power_heuristic(direction_pdf, light_pdf);
-            brdf_radiance_mis = brdf * emission * mis_weight / direction_pdf;
+                float light_pdf = distance_squared / (light_area * cos_angle);
+
+                float mis_weight = power_heuristic(direction_pdf, light_pdf);
+                float cosine_term = dot(closest_hit_info.normal_at_intersection, sampled_brdf_direction);
+                brdf_radiance_mis = brdf * cosine_term * emission * mis_weight / direction_pdf;
+            }
         }
     }
-
 
     return light_source_radiance_mis + brdf_radiance_mis;
 }
