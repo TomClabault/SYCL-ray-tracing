@@ -112,7 +112,7 @@ void RenderKernel::ray_trace_pixel(int x, int y) const
                     // ---------- Direct lighting light sources ---------- //
                     // --------------------------------------------------- //
                     Color light_sources_radiance = sample_light_sources(ray, closest_hit_info, material, random_number_generator);
-                    Color env_map_radiance; //= sample_environment_map(ray, closest_hit_info, material, random_number_generator);
+                    Color env_map_radiance = sample_environment_map(ray, closest_hit_info, material, random_number_generator);
 
                     // --------------------------------------- //
                     // ---------- Indirect lighting ---------- //
@@ -147,17 +147,15 @@ void RenderKernel::ray_trace_pixel(int x, int y) const
             }
             else if (next_ray_state == MISSED)
             {
-                //if (bounce == 1)
-                //{
-                //    //We're only getting the skysphere radiance for the first rays because the
-                //    //syksphere is importance sampled
+                if (bounce == 1)
+                {
+                    //We're only getting the skysphere radiance for the first rays because the
+                    //syksphere is importance sampled
 
-                //    Color skysphere_color = sample_environment_map_from_direction(ray.direction);
+                    Color skysphere_color = sample_environment_map_from_direction(ray.direction);
 
-                //    sample_color += skysphere_color * throughput;
-                //}
-
-                sample_color += Color(70.0f / 255.0f) * throughput;
+                    sample_color += skysphere_color * throughput;
+                }
 
                 break;
             }
@@ -188,8 +186,8 @@ void RenderKernel::ray_trace_pixel(int x, int y) const
 #include <omp.h>
 
 #define DEBUG_PIXEL 0
-#define PIXEL_X 167
-#define PIXEL_Y 70
+#define PIXEL_X 1650
+#define PIXEL_Y 516
 void RenderKernel::render()
 {
     std::atomic<int> lines_completed = 0;
@@ -530,8 +528,8 @@ Color RenderKernel::sample_environment_map_from_direction(const Vector& directio
     u = 0.5f + std::atan2(direction.z, direction.x) / (2.0f * (float)M_PI);
     v = 0.5f + std::asin(direction.y) / (float)M_PI;
 
-    int x = u * m_skysphere.width();
-    int y = m_skysphere.height() - v * m_skysphere.height();
+    int x = u * (m_skysphere.width() - 1);
+    int y = v * (m_skysphere.height() - 1);
 
     return m_skysphere[y * m_skysphere.width() + x];
 }
@@ -593,7 +591,9 @@ Color RenderKernel::sample_environment_map(const Ray& ray, const HitInfo& closes
             Color skysphere_sample_radiance = m_skysphere(random_pixel_coord_x, random_pixel_coord_y);
             skysphere_sample_radiance = sample_environment_map_from_direction(normalize(sampled_direction));
 
-            return skysphere_sample_radiance / skysphere_pdf * brdf;
+            float cosine_term = dot(closest_hit_info.normal_at_intersection, sampled_direction);
+
+            return skysphere_sample_radiance / skysphere_pdf * brdf * cosine_term;
         }
     }
 }

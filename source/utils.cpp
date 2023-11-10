@@ -78,8 +78,10 @@ ParsedOBJ Utils::parse_obj(const std::string& filepath)
     return parsed_obj;
 }
 
-Image Utils::read_image_float(const std::string& filepath, int& image_width, int& image_height)
+Image Utils::read_image_float(const std::string& filepath, int& image_width, int& image_height, bool flipY)
 {
+    stbi_set_flip_vertically_on_load(flipY);
+
     int channels;
     float* pixels = stbi_loadf(filepath.c_str(), &image_width, &image_height, &channels, 0);
 
