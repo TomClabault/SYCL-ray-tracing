@@ -75,8 +75,8 @@ int main(int argc, char* argv[])
         */
     }
 
-    const int width = 256;
-    const int height = 256;
+    const int width = 1280 / 4;
+    const int height = 720 / 4;
 
 
     std::cout << "Reading OBJ..." << std::endl;
@@ -99,7 +99,7 @@ int main(int argc, char* argv[])
     std::cout << "Reading Environment Map..." << std::endl;
     Image skysphere_data = Utils::read_image_float("../SYCL-ray-tracing/data/Skyspheres/evening_road_01_puresky_8k.hdr", skysphere_width, skysphere_height);
     std::cout << "Importance Sampling Environment Map..." << std::endl;
-    std::vector<ImageBin> skysphere_importance_bins = Utils::importance_split_skysphere(skysphere_data);
+    std::vector<ImageBin> skysphere_importance_bins;// = Utils::importance_split_skysphere(skysphere_data);
 
     std::cout << "[" << width << "x" << height << "]: " << SAMPLES_PER_KERNEL << " samples" << std::endl << std::endl;
 

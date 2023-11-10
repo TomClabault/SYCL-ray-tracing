@@ -12,7 +12,7 @@
 
 #define SAMPLES_PER_KERNEL 32
 #define MAX_BOUNCES 15
-#define USE_BVH 1
+#define USE_BVH 0
 
 #define TILE_SIZE_X 8
 #define TILE_SIZE_Y TILE_SIZE_X

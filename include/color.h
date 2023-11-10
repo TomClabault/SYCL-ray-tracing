@@ -25,6 +25,11 @@ struct Color
         return r == other.r && g == other.g && b == other.b;
     }
 
+    inline bool operator!=(const Color& other)
+    {
+        return !(*this == other);
+    }
+
     inline Color& operator=(const Vector& vec)
     {
         r = vec.x;
