@@ -634,7 +634,7 @@ Color RenderKernel::sample_light_sources(const Ray& ray, const HitInfo& closest_
                 Color Li = emissive_triangle_material.emission * std::max(dot(closest_hit_info.normal_at_intersection, shadow_ray_direction_normalized), 0.0f);
                 float cosine_term = dot(closest_hit_info.normal_at_intersection, shadow_ray_direction_normalized);
 
-                light_source_radiance_mis = Li * cosine_term * brdf / light_sample_pdf;
+                light_source_radiance_mis = Li * cosine_term * brdf * mis_weight / light_sample_pdf;
             }
         }
     }
