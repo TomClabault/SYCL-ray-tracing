@@ -10,7 +10,7 @@
 #include "triangle.h"
 #include "xorshift.h"
 
-#define SAMPLES_PER_KERNEL 16
+#define SAMPLES_PER_KERNEL 128
 #define MAX_BOUNCES 15
 #define USE_BVH 1
 

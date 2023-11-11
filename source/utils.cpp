@@ -4,6 +4,7 @@
 
 #include "color.h"
 #include "image.h"
+#include "image_io.h"
 #include "rapidobj.hpp"
 #include "utils.h"
 
@@ -210,7 +211,30 @@ std::vector<ImageBin> Utils::importance_split_skysphere(const Image& skysphere, 
     return Utils::importance_split_skysphere(skysphere, whole_image_region, current_radiance, minimum_bin_area, minimum_bin_radiance);
 }
 
-void Utils::write_env_map_bins_to_file(const std::string& filepath, const std::vector<float>& skysphere_data, const std::vector<ImageBin>& skysphere_importance_bins)
+void Utils::write_env_map_bins_to_file(const std::string& filepath, Image skysphere_data, const std::vector<ImageBin>& skysphere_importance_bins)
 {
+    int max_index = skysphere_data.width() * skysphere_data.height() - 1;
 
+    for (const ImageBin& bin : skysphere_importance_bins)
+    {
+        for (int y = bin.y0; y < bin.y1; y++)
+        {
+            int index1 = std::min(y * skysphere_data.width() + bin.x0, max_index);
+            int index2 = std::min(y * skysphere_data.width() + bin.x1, max_index);
+
+            skysphere_data[index1] = Color(1.0f, 0.0f, 0.0f);
+            skysphere_data[index2] = Color(1.0f, 0.0f, 0.0f);
+        }
+
+        for (int x = bin.x0; x < bin.x1; x++)
+        {
+            int index1 = std::min(bin.y0 * skysphere_data.width() + x, max_index);
+            int index2 = std::min(bin.y1 * skysphere_data.width() + x, max_index);
+
+            skysphere_data[index1] = Color(1.0f, 0.0f, 0.0f);
+            skysphere_data[index2] = Color(1.0f, 0.0f, 0.0f);
+        }
+    }
+
+    write_image_hdr(skysphere_data, filepath.c_str());
 }

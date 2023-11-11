@@ -112,7 +112,7 @@ void RenderKernel::ray_trace_pixel(int x, int y) const
                     // ---------- Direct lighting light sources ---------- //
                     // --------------------------------------------------- //
                     Color light_sources_radiance = sample_light_sources(ray, closest_hit_info, material, random_number_generator);
-                    Color env_map_radiance = sample_environment_map(ray, closest_hit_info, material, random_number_generator);
+                    Color env_map_radiance;// = sample_environment_map(ray, closest_hit_info, material, random_number_generator);
 
                     // --------------------------------------- //
                     // ---------- Indirect lighting ---------- //
@@ -147,7 +147,7 @@ void RenderKernel::ray_trace_pixel(int x, int y) const
             }
             else if (next_ray_state == MISSED)
             {
-                if (bounce == 1)
+                if (bounce == 100)
                 {
                     //We're only getting the skysphere radiance for the first rays because the
                     //syksphere is importance sampled
@@ -526,7 +526,6 @@ float power_heuristic(float pdf_a, float pdf_b)
 
 Color RenderKernel::sample_environment_map_from_direction(const Vector& direction) const
 {
-    //97 : 3.73, 3.66, 2.46
     float u, v;
     u = 0.5f + std::atan2(direction.z, direction.x) / (2.0f * (float)M_PI);
     v = 0.5f + std::asin(direction.y) / (float)M_PI;
@@ -541,6 +540,7 @@ Color RenderKernel::sample_environment_map(const Ray& ray, const HitInfo& closes
 {
     float num_bins = m_env_map_bins.size();
     int random_bin_index = num_bins * random_number_generator();
+    random_bin_index = 100;
     ImageBin bin = m_env_map_bins[random_bin_index];
 
     float bin_width = bin.x1 - bin.x0;
@@ -592,7 +592,7 @@ Color RenderKernel::sample_environment_map(const Ray& ray, const HitInfo& closes
     if (brdf_sample_pdf != 0.0f && cosine_term > 0.0f)
     {
         Color skysphere_color = sample_environment_map_from_direction(brdf_sampled_dir);
-        float mis_weight = power_heuristic(brdf_sample_pdf, 1.0f / (4.0f * M_PI));
+        float mis_weight = power_heuristic(brdf_sample_pdf, (1.0f / 4.0f * M_PI));//TODO env map PDF incorrect
 
         HitInfo trash;
         if (!INTERSECT_SCENE(Ray(closest_hit_info.inter_point + closest_hit_info.normal_at_intersection * 1.0e-5f, brdf_sampled_dir), trash))
@@ -702,10 +702,13 @@ Color RenderKernel::sample_light_sources(const Ray& ray, const HitInfo& closest_
                 Color Li = emissive_triangle_material.emission * std::max(dot(closest_hit_info.normal_at_intersection, shadow_ray_direction_normalized), 0.0f);
                 float cosine_term = dot(closest_hit_info.normal_at_intersection, shadow_ray_direction_normalized);
 
+                mis_weight = 1.0f;
                 light_source_radiance_mis = Li * cosine_term * brdf * mis_weight / light_sample_pdf;
             }
         }
     }
+
+    return light_source_radiance_mis;
 
     Color brdf_radiance_mis;
 

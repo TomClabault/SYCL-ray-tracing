@@ -81,7 +81,7 @@ int main(int argc, char* argv[])
 
     std::cout << "Reading OBJ..." << std::endl;
     //ParsedOBJ parsed_obj = Utils::parse_obj("../SYCL-ray-tracing/data/OBJs/pbrt_dragon.obj");
-    ParsedOBJ parsed_obj = Utils::parse_obj("../SYCL-ray-tracing/data/OBJs/cornell_pbr.obj");
+    ParsedOBJ parsed_obj = Utils::parse_obj("../SYCL-ray-tracing/data/OBJs/MIS.obj");
 
     //Sphere sphere = add_sphere_to_scene(parsed_obj, Point(0.3275, 0.7, 0.3725), 0.2, SimpleMaterial {Color(0.0f), Color(1.0f, 0.71, 0.29), 1.0f, 0.4f}, parsed_obj.triangles.size());
     //std::vector<Sphere> spheres = { sphere };
@@ -119,7 +119,8 @@ int main(int argc, char* argv[])
         skysphere_data,
         skysphere_importance_bins);
     //render_kernel.set_camera(Camera::PBRT_DRAGON_CAMERA);
-    render_kernel.set_camera(Camera::CORNELL_BOX_CAMERA);
+    //render_kernel.set_camera(Camera::CORNELL_BOX_CAMERA);
+    render_kernel.set_camera(Camera::MIS_CAMERA);
 
     render_kernel.render();
 
