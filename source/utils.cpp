@@ -209,3 +209,8 @@ std::vector<ImageBin> Utils::importance_split_skysphere(const Image& skysphere, 
 
     return Utils::importance_split_skysphere(skysphere, whole_image_region, current_radiance, minimum_bin_area, minimum_bin_radiance);
 }
+
+void Utils::write_env_map_bins_to_file(const std::string& filepath, const std::vector<float>& skysphere_data, const std::vector<ImageBin>& skysphere_importance_bins)
+{
+
+}

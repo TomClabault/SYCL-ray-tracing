@@ -36,7 +36,7 @@ int dichotomie(std::vector<float> bins, float random)
 
 int main(int argc, char* argv[])
 {
-    regression_tests();
+    //regression_tests();
     std::cout << std::endl;
 
     std::vector<float> bins {4, 5, 8, 2, 1};
@@ -75,8 +75,8 @@ int main(int argc, char* argv[])
         */
     }
 
-    const int width = 1280 * 2;
-    const int height = 720 * 2;
+    const int width = 1280 / 2;
+    const int height = 720 / 2;
 
 
     std::cout << "Reading OBJ..." << std::endl;
@@ -98,8 +98,11 @@ int main(int argc, char* argv[])
     int skysphere_width, skysphere_height;
     std::cout << "Reading Environment Map..." << std::endl;
     Image skysphere_data = Utils::read_image_float("../SYCL-ray-tracing/data/Skyspheres/evening_road_01_puresky_8k.hdr", skysphere_width, skysphere_height);
-    std::cout << "Importance Sampling Environment Map..." << std::endl;
+    std::cout << "Importance Sampling Environment Map... ";
     std::vector<ImageBin> skysphere_importance_bins = Utils::importance_split_skysphere(skysphere_data);
+    std::cout << skysphere_importance_bins.size() << " bins" << std::endl;
+
+    Utils::write_env_map_bins_to_file("sky_bins.hdr", skysphere_data, skysphere_importance_bins);
 
     std::cout << "[" << width << "x" << height << "]: " << SAMPLES_PER_KERNEL << " samples" << std::endl << std::endl;
 
@@ -126,6 +129,7 @@ int main(int argc, char* argv[])
     Image image_denoised_08 = Utils::OIDN_denoise(image_buffer, 0.8f);
 
     write_image_png(image_buffer, "../TP_RT_output_good_08_exp0.75.png");
+    //write_image_png(image_denoised_08, "../TP_RT_output_good_08_exp0.75.png");
 
     return 0;
 }

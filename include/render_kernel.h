@@ -10,9 +10,9 @@
 #include "triangle.h"
 #include "xorshift.h"
 
-#define SAMPLES_PER_KERNEL 32
+#define SAMPLES_PER_KERNEL 16
 #define MAX_BOUNCES 15
-#define USE_BVH 0
+#define USE_BVH 1
 
 #define TILE_SIZE_X 8
 #define TILE_SIZE_Y TILE_SIZE_X
@@ -44,7 +44,7 @@ public:
         m_materials_indices_buffer(materials_indices_buffer_accessor),
         m_sphere_buffer(analytic_spheres_buffer),
         m_bvh(bvh),
-        m_skysphere(skysphere),
+        m_environment_map(skysphere),
         m_env_map_bins(env_map_bins) {}
 
     void set_camera(Camera camera) { m_camera = camera; }
@@ -87,7 +87,7 @@ private:
 
     const BVH& m_bvh;
 
-    const Image& m_skysphere;
+    const Image& m_environment_map;
     const std::vector<ImageBin>& m_env_map_bins;
 
     Camera m_camera;
