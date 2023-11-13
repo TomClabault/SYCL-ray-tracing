@@ -263,7 +263,7 @@ public:
 
 public:
     BVH();
-    BVH(std::vector<Triangle>* triangles, int max_depth = -1, int leaf_max_obj_count = 8);
+    BVH(std::vector<Triangle>* triangles, int max_depth = 32, int leaf_max_obj_count = 8);
     ~BVH();
 
     void operator=(BVH&& bvh);
