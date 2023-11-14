@@ -15,7 +15,7 @@ public:
     static ParsedOBJ parse_obj(const std::string& filepath);
     static Image read_image_float(const std::string& filepath, int& image_width, int& image_height, bool flipY = true);
 
-    static std::vector<ImageBin> importance_split_skysphere(const Image& skysphere, int minimum_bin_area = 1024, float minimum_bin_radiance = 160000);
+    static std::vector<ImageBin> importance_split_skysphere(const Image& skysphere, int minimum_bin_area = 1024, float minimum_bin_radiance = 1000000);
     static std::vector<ImageBin> importance_split_skysphere(const Image& skysphere, ImageBin current_region, float current_radiance, int minimum_bin_area, float minimum_bin_radiance);
 
     static void write_env_map_bins_to_file(const std::string& filepath, Image skysphere_data, const std::vector<ImageBin>& skysphere_importance_bins);

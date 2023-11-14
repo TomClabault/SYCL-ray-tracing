@@ -80,7 +80,8 @@ int main(int argc, char* argv[])
 
 
     std::cout << "Reading OBJ..." << std::endl;
-    ParsedOBJ parsed_obj = Utils::parse_obj("../SYCL-ray-tracing/data/OBJs/pbrt_dragon.obj");
+    ParsedOBJ parsed_obj = Utils::parse_obj("../SYCL-ray-tracing/data/OBJs/cornell_pbr.obj");
+    //ParsedOBJ parsed_obj = Utils::parse_obj("../SYCL-ray-tracing/data/OBJs/pbrt_dragon.obj");
     //ParsedOBJ parsed_obj = Utils::parse_obj("../SYCL-ray-tracing/data/OBJs/MIS.obj");
 
     //Sphere sphere = add_sphere_to_scene(parsed_obj, Point(0.3275, 0.7, 0.3725), 0.2, SimpleMaterial {Color(0.0f), Color(1.0f, 0.71, 0.29), 1.0f, 0.4f}, parsed_obj.triangles.size());
@@ -118,8 +119,8 @@ int main(int argc, char* argv[])
         bvh,
         skysphere_data,
         skysphere_importance_bins);
-    render_kernel.set_camera(Camera::PBRT_DRAGON_CAMERA);
-    //render_kernel.set_camera(Camera::CORNELL_BOX_CAMERA);
+    //render_kernel.set_camera(Camera::PBRT_DRAGON_CAMERA);
+    render_kernel.set_camera(Camera::CORNELL_BOX_CAMERA);
     //render_kernel.set_camera(Camera::MIS_CAMERA);
 
     render_kernel.render();
@@ -127,7 +128,7 @@ int main(int argc, char* argv[])
     auto stop = std::chrono::high_resolution_clock::now();
     std::cout << std::chrono::duration_cast<std::chrono::milliseconds>(stop - start).count() << "ms" << std::endl;
 
-    Image image_denoised_08 = Utils::OIDN_denoise(image_buffer, 0.8f);
+    Image image_denoised_08 = Utils::OIDN_denoise(image_buffer, 0.65f);
 
     write_image_png(image_buffer, "../TP_RT_output_good_08_exp0.75.png");
     //write_image_png(image_denoised_08, "../TP_RT_output_good_08_exp0.75.png");

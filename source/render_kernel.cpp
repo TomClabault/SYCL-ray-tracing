@@ -111,7 +111,7 @@ void RenderKernel::ray_trace_pixel(int x, int y) const
                     // ---------- Direct lighting light sources ---------- //
                     // --------------------------------------------------- //
                     Color light_sources_radiance = sample_light_sources(ray, closest_hit_info, material, random_number_generator);
-                    Color env_map_radiance;// = sample_environment_map(ray, closest_hit_info, material, random_number_generator);
+                    Color env_map_radiance = sample_environment_map(ray, closest_hit_info, material, random_number_generator);
 
                     // --------------------------------------- //
                     // ---------- Indirect lighting ---------- //
@@ -144,7 +144,7 @@ void RenderKernel::ray_trace_pixel(int x, int y) const
             }
             else if (next_ray_state == MISSED)
             {
-                //if (bounce == 100)
+                if (bounce == 1)
                 {
                     //We're only getting the skysphere radiance for the first rays because the
                     //syksphere is importance sampled
@@ -183,8 +183,8 @@ void RenderKernel::ray_trace_pixel(int x, int y) const
 #include <omp.h>
 
 #define DEBUG_PIXEL 0
-#define PIXEL_X 1650
-#define PIXEL_Y 516
+#define PIXEL_X 270
+#define PIXEL_Y 168
 void RenderKernel::render()
 {
     std::atomic<int> lines_completed = 0;
@@ -402,7 +402,6 @@ Color RenderKernel::cook_torrance_brdf_importance_sample(const SimpleMaterial& m
 
     Vector microfacet_normal_local_space = Vector(std::cos(phi) * sin_theta, std::sin(phi) * sin_theta, std::cos(theta));
     Vector microfacet_normal = rotate_vector_around_normal(surface_normal, microfacet_normal_local_space);
-    microfacet_normal = cook_torrance_brdf_sample_visible_normal(material, view_direction, surface_normal, pdf, random_number_generator);
     if (dot(microfacet_normal, surface_normal) < 0.0f)
         //The microfacet normal that we sampled was under the surface, it can happen
         return Color(0.0f);
@@ -410,58 +409,40 @@ Color RenderKernel::cook_torrance_brdf_importance_sample(const SimpleMaterial& m
     Vector halfway_vector = microfacet_normal;
     output_direction = to_light_direction;
 
+    Color brdf_color = Color(0.0f, 0.0f, 0.0f);
+    Color base_color = material.diffuse;
+
     float NoV = std::max(0.0f, dot(surface_normal, view_direction));
     float NoL = std::max(0.0f, dot(surface_normal, to_light_direction));
     float NoH = std::max(0.0f, dot(surface_normal, halfway_vector));
     float VoH = std::max(0.0f, dot(halfway_vector, view_direction));
+
     if (NoV > 0.0f && NoL > 0.0f && NoH > 0.0f)
     {
-        Color F0 = Color(0.04f * (1.0f - metalness)) + metalness * material.diffuse;
-        Color F = fresnel_schlick(F0, VoH);
-        float G1 = SmithGGXMasking(surface_normal, view_direction, alpha);
-        float G2 = SmithGGXMaskingShadowing(surface_normal, to_light_direction, view_direction, alpha);
+        /////////// Cook Torrance BRDF //////////
+        Color F;
+        float D, G;
 
-        return F * (G2 / G1);
+        //F0 = 0.04 for dielectrics, 1.0 for metals (approximation)
+        Color F0 = Color(0.04f * (1.0f - metalness)) + metalness * base_color;
 
+        //GGX Distribution function
+        F = fresnel_schlick(F0, VoH);
+        D = GGX_normal_distribution(alpha, NoH);
+        G = GGX_smith_masking_shadowing(alpha, NoV, NoL);
+
+        Color kD = Color(1.0f - metalness); //Metals do not have a diffuse part
+        kD *= Color(1.0f) - F;//Only the transmitted light is diffused
+
+        Color diffuse_part = kD * base_color / (float)M_PI;
+        Color specular_part = (F * D * G) / (4.0f * NoV * NoL);
+
+        pdf = D * NoH / (4.0f * VoH);
+
+        brdf_color = diffuse_part + specular_part;// / pdf;
     }
-    else {
-        return Color(0.0f);
-    }
 
-//    Color brdf_color = Color(0.0f, 0.0f, 0.0f);
-//    Color base_color = material.diffuse;
-
-//    float NoV = std::max(0.0f, dot(surface_normal, view_direction));
-//    float NoL = std::max(0.0f, dot(surface_normal, to_light_direction));
-//    float NoH = std::max(0.0f, dot(surface_normal, halfway_vector));
-//    float VoH = std::max(0.0f, dot(halfway_vector, view_direction));
-
-//    if (NoV > 0.0f && NoL > 0.0f && NoH > 0.0f)
-//    {
-//        /////////// Cook Torrance BRDF //////////
-//        Color F;
-//        float D, G;
-
-//        //F0 = 0.04 for dielectrics, 1.0 for metals (approximation)
-//        Color F0 = Color(0.04f * (1.0f - metalness)) + metalness * base_color;
-
-//        //GGX Distribution function
-//        F = fresnel_schlick(F0, VoH);
-//        D = GGX_normal_distribution(alpha, NoH);
-//        G = GGX_smith_masking_shadowing(alpha, NoV, NoL);
-
-//        Color kD = Color(1.0f - metalness); //Metals do not have a diffuse part
-//        kD *= Color(1.0f) - F;//Only the transmitted light is diffused
-
-//        Color diffuse_part = kD * base_color / (float)M_PI;
-//        Color specular_part = (F * D * G) / (4.0f * NoV * NoL);
-
-//        //pdf = D * NoH / (4.0f * VoH);
-
-//        brdf_color = diffuse_part + specular_part;// / pdf;
-//    }
-
-//    return brdf_color;
+    return brdf_color;
 }
 
 bool RenderKernel::intersect_scene(const Ray& ray, HitInfo& closest_hit_info) const
@@ -623,7 +604,6 @@ Color RenderKernel::sample_environment_map(const Ray& ray, const HitInfo& closes
 {
     float num_bins = m_env_map_bins.size();
     int random_bin_index = num_bins * random_number_generator();
-    random_bin_index = 100;
     ImageBin bin = m_env_map_bins[random_bin_index];
 
     float bin_width = bin.x1 - bin.x0;
@@ -649,7 +629,6 @@ Color RenderKernel::sample_environment_map(const Ray& ray, const HitInfo& closes
     Color env_sample;
     if (cosine_term > 0.0f)
     {
-
         float bin_area = bin_width * bin_height;
         float bin_pdf = env_map_area / (num_bins * bin_area);
         float env_map_pdf = sin_theta == 0.0 ? 0.0 : bin_pdf / (2.0 * M_PI * M_PI * sin_theta);
@@ -657,10 +636,14 @@ Color RenderKernel::sample_environment_map(const Ray& ray, const HitInfo& closes
         Color brdf = cook_torrance_brdf(material, sampled_dir, -ray.direction, closest_hit_info.normal_at_intersection);
         float brdf_pdf = cook_torrance_brdf_pdf(material, -ray.direction, sampled_dir, closest_hit_info.normal_at_intersection);
         float mis_weight = power_heuristic(env_map_pdf, brdf_pdf);
+        mis_weight = 1.0f;//TODO remove, debug only
 
         HitInfo trash;
         if (!INTERSECT_SCENE(Ray(closest_hit_info.inter_point + closest_hit_info.normal_at_intersection * 1.0e-5f, sampled_dir), trash))
-            env_sample = brdf * cosine_term * mis_weight * sample_environment_map_from_direction(sampled_dir) / env_map_pdf;
+        {
+            Color env_map_radiance = sample_environment_map_from_direction(sampled_dir);
+            env_sample = brdf * cosine_term * mis_weight * env_map_radiance / env_map_pdf;
+        }
     }
 
 
@@ -682,7 +665,7 @@ Color RenderKernel::sample_environment_map(const Ray& ray, const HitInfo& closes
             brdf_sample = skysphere_color * mis_weight * cosine_term * brdf_imp_sampling / brdf_sample_pdf;
     }
 
-
+    return env_sample;//TODO remove, debug only
     return brdf_sample + env_sample;
 
     //Vector sampled_direction;
