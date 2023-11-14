@@ -3,8 +3,6 @@
 
 #include "vec.h"
 
-#include <sycl/sycl.hpp>
-
 #include <iostream>
 
 struct Color

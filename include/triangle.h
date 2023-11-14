@@ -5,8 +5,6 @@
 #include "ray.h"
 #include "vec.h"
 
-#include <sycl/sycl.hpp>
-
 struct Triangle
 {
 	Triangle() {}

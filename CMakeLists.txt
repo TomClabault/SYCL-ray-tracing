@@ -8,8 +8,6 @@ endif()
 
 project(SYCL_RayTracing LANGUAGES CXX)
 
-find_package(IntelDPCPP REQUIRED)
-
 add_executable(SYCL_RayTracing
     ${SYCL_HEADERS}
 

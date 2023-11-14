@@ -22,7 +22,7 @@ Ray RenderKernel::get_camera_ray(float x, float y) const
     return ray;
 }
 
-void RenderKernel::ray_trace_pixel(int x, int y) const
+void RenderKernel::ray_trace_pixel(int x, int y)
 {
     Color debug_final_color;
     Color final_color = Color(0.0f, 0.0f, 0.0f);
@@ -81,7 +81,7 @@ void RenderKernel::ray_trace_pixel(int x, int y) const
 
     final_color /= SAMPLES_PER_KERNEL;
     final_color.a = 0.0f;
-    m_frame_buffer_access[y * m_width + x] += final_color;
+    m_frame_buffer_access[y * m_width + x] = final_color + m_frame_buffer_access[y * m_width + x];
 }
 
 bool RenderKernel::intersect_scene(const Ray ray, HitInfo& closest_hit_info) const

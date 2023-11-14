@@ -2,15 +2,15 @@
 #ifndef _VEC_H
 #define _VEC_H
 
-#include <sycl/sycl.hpp>
+#include <cmath>
 
 struct Vector;
 struct Point;
 
 struct Point
 {
-    SYCL_EXTERNAL Point( ) : x(0), y(0), z(0) {}
-    SYCL_EXTERNAL explicit Point( const float _x, const float _y, const float _z ) : x(_x), y(_y), z(_z) {}
+    Point( ) : x(0), y(0), z(0) {}
+    explicit Point( const float _x, const float _y, const float _z ) : x(_x), y(_y), z(_z) {}
 
     float x, y, z;
 };
@@ -114,12 +114,12 @@ inline float length2( const Vector& v )
 
 inline float length( const Vector& v )
 {
-    return sycl::sqrt(length2(v));
+    return std::sqrt(length2(v));
 }
 
 inline Vector abs(const Vector& v)
 {
-    return Vector(sycl::abs(v.x), sycl::abs(v.y), sycl::abs(v.z));
+    return Vector(std::abs(v.x), std::abs(v.y), std::abs(v.z));
 }
 
 inline Vector normalize( const Vector& v )

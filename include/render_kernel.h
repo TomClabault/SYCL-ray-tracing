@@ -5,13 +5,13 @@
 #include "color.h"
 #include "triangle.h"
 
-#include <sycl/sycl.hpp>
-
 #define SAMPLES_PER_KERNEL 64
 #define MAX_BOUNCES 4
 
 #define TILE_SIZE_X 8
 #define TILE_SIZE_Y TILE_SIZE_X
+
+#include <vector>
 
 struct LightSourceInformation
 {
@@ -23,8 +23,8 @@ class RenderKernel
 {
 public:
     RenderKernel(int width, int height,
-                 sycl::accessor<Color, 1, sycl::access::mode::write, sycl::access::target::device> frame_buffer_accessor,
-                 sycl::accessor<Triangle, 1, sycl::access::mode::read, sycl::access::target::device> triangle_buffer_accessor) :
+                 std::vector<Color>& frame_buffer_accessor,
+                 std::vector<Triangle>& triangle_buffer_accessor) :
         m_width(width),
         m_height(height), 
         m_frame_buffer_access(frame_buffer_accessor),
@@ -32,17 +32,20 @@ public:
 
     void set_camera(Camera camera) { m_camera = camera; }
 
-    void operator()(const sycl::nd_item<2>& coordinates) const
+    void render()
     {
-        int x = coordinates.get_global_id(0);
-        int y = coordinates.get_global_id(1);
+        for (int y = 0; y < m_height; y++)
+        {
+            for (int x = 0; x < m_width; x++)
+                ray_trace_pixel(x, y);
 
-        ray_trace_pixel(x, y);
+            std::cout << (float)y / m_height * 100 << "%" << std::endl;
+        }
     }
 
-    SYCL_EXTERNAL Ray get_camera_ray(float x, float y) const;
+    Ray get_camera_ray(float x, float y) const;
 
-    SYCL_EXTERNAL void ray_trace_pixel(int x, int y) const;
+    void ray_trace_pixel(int x, int y);
 
     bool intersect_scene(const Ray ray, HitInfo& closest_hit_info) const;
     bool evaluate_shadow_ray(Ray ray, float t_max) const;
@@ -50,9 +53,8 @@ public:
 private:
     int m_width, m_height;
 
-    sycl::accessor<Color, 1, sycl::access::mode::write, sycl::access::target::device> m_frame_buffer_access;
-
-    sycl::accessor<Triangle, 1, sycl::access::mode::read, sycl::access::target::device> m_triangle_buffer_access;
+    std::vector<Color>& m_frame_buffer_access;
+    std::vector<Triangle>& m_triangle_buffer_access;
 
     Camera m_camera;
 };
