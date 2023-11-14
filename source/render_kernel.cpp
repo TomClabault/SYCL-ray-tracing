@@ -135,8 +135,6 @@ void RenderKernel::ray_trace_pixel(int x, int y) const
 
                     throughput *= brdf * std::max(0.0f, dot(random_bounce_direction, closest_hit_info.normal_at_intersection)) / brdf_pdf;
 
-                    //throughput /= pdf;
-
                     Point new_ray_origin = closest_hit_info.inter_point + closest_hit_info.normal_at_intersection * 1.0e-4f;
                     ray = Ray(new_ray_origin, random_bounce_direction);
                     next_ray_state = RayState::BOUNCE;
@@ -298,91 +296,77 @@ inline Color RenderKernel::cook_torrance_brdf(const SimpleMaterial& material, co
     return brdf_color;
 }
 
-Color fresnelSchlick(Color F0, float cosTheta) {
-  return F0 + (Color(1.0f) - F0) * std::pow(1.0f - cosTheta, 5.0f);
-}
-
-float D_GGX(float alpha, float NoH) {
-  float alpha2 = alpha * alpha;
-  float NoH2 = NoH * NoH;
-  float b = (NoH2 * (alpha2 - 1.0f) + 1.0f);
-  return alpha2 * (1.0f / (float)M_PI) / (b * b);
-}
-
-float G1_GGX_Schlick(float NoV, float alpha) {
-  float k = alpha / 2.0f;
-  return std::max(NoV, 0.001f) / (NoV * (1.0f - k) + k);
-}
-
-float G_Smith(float alpha, float NoV, float NoL) {
-  return G1_GGX_Schlick(NoL, alpha) * G1_GGX_Schlick(NoV, alpha);
-}
-
-
-/*
-* vec3 sampleGGXVNDF(vec3 V_, float alpha_x, float alpha_y, float U1, float U2)
+Vector SampleVndf_Hemisphere(xorshift32_generator& random_number_generator, Vector wi)
 {
-// stretch view
-vec3 V = normalize(vec3(alpha_x * V_.x, alpha_y * V_.y, V_.z));
-// orthonormal basis
-vec3 T1 = (V.z < 0.9999) ? normalize(cross(V, vec3(0,0,1))) : vec3(1,0,0);
-vec3 T2 = cross(T1, V);
-// sample point with polar coordinates (r, phi)
-float a = 1.0 / (1.0 + V.z);
-float r = sqrt(U1);
-float phi = (U2<a) ? U2/a * M_PI : M_PI + (U2-a)/(1.0-a) * M_PI;
-float P1 = r*cos(phi);
-float P2 = r*sin(phi)*((U2<a) ? 1.0 : V.z);
-// compute normal
-vec3 N = P1*T1 + P2*T2 + sqrt(max(0.0, 1.0 - P1*P1 - P2*P2))*V;
-// unstretch
-N = normalize(vec3(alpha_x*N.x, alpha_y*N.y, max(0.0, N.z)));
-return N;
+    float u1 = random_number_generator();
+    float u2 = random_number_generator();
+
+    // sample a spherical cap in (-wi.z, 1]
+    float phi = 2.0f * M_PI * u1;
+    //float z = fma((1.0f - u.y), (1.0f + wi.z), -wi.z);
+    float z = 1.0f - u2 - u2 * wi.z;
+    float sinTheta = std::sqrt(std::min(1.0f, std::max(0.0f, (1.0f - z * z))));
+    float x = sinTheta * std::cos(phi);
+    float y = sinTheta * std::sin(phi);
+    Vector c = Vector(x, y, z);
+    // compute halfway direction;
+    Vector h = c + wi;
+    // return without normalization as this is done later (see line 25)
+    return h;
 }
-
-*/
+
 //From https://schuttejoe.github.io/post/ggximportancesamplingpart2/
 Vector RenderKernel::cook_torrance_brdf_sample_visible_normal(const SimpleMaterial& material, const Vector& wo, const Vector& surface_normal, float& pdf, xorshift32_generator& random_number_generator) const
 {
-    // -- Stretch the view vector so we are sampling as though
-    // -- roughness==1
+//    // -- Stretch the view vector so we are sampling as though
+//    // -- roughness==1
+//    float roughness = material.roughness;
+//    float alpha = roughness * roughness;
+
+//    Vector v = normalize(Vector(wo.x * roughness, wo.y, wo.z * roughness));
+
+//    // -- Build an orthonormal basis with v, t1, and t2
+//    Vector t1, t2;
+//    branchlessONB(wo, t1, t2);
+
+//    // -- Choose a point on a disk with each half of the disk weighted
+//    // -- proportionally to its projection onto direction v
+//    float u1 = random_number_generator();
+//    float u2 = random_number_generator();
+//    float a = 1.0f / (1.0f + v.y);
+//    float r = std::sqrt(u1);
+//    float phi = (u2 < a) ? (u2 / a) * M_PI : M_PI + (u2 - a) / (1.0f - a) * M_PI;
+//    float p1 = r * std::cos(phi);
+//    float p2 = r * std::sin(phi) * ((u2 < a) ? 1.0f : v.y);
+
+//    // -- Calculate the normal in this stretched tangent space
+//    Vector n = p1 * t1 + p2 * t2 + std::sqrt(std::max(0.0f, 1.0f - p1 * p1 - p2 * p2)) * v;
+
+//    // -- unstretch and normalize the normal
+//    Vector microfacet_normal = normalize(Vector(roughness * n.x, std::max(0.0f, n.y), roughness * n.z));
+//    //microfacet_normal = rotate_vector_around_normal(surface_normal, microfacet_normal);
+
+
     float roughness = material.roughness;
     float alpha = roughness * roughness;
-
-    Vector v = normalize(Vector(wo.x * roughness, wo.y, wo.z * roughness));
-
-    // -- Build an orthonormal basis with v, t1, and t2
-    Vector t1, t2;
-    branchlessONB(wo, t1, t2);
-
-    // -- Choose a point on a disk with each half of the disk weighted
-    // -- proportionally to its projection onto direction v
-    float u1 = random_number_generator();
-    float u2 = random_number_generator();
-    float a = 1.0f / (1.0f + v.y);
-    float r = std::sqrt(u1);
-    float phi = (u2 < a) ? (u2 / a) * M_PI : M_PI + (u2 - a) / (1.0f - a) * M_PI;
-    float p1 = r * std::cos(phi);
-    float p2 = r * std::sin(phi) * ((u2 < a) ? 1.0f : v.y);
-
-    // -- Calculate the normal in this stretched tangent space
-    Vector n = p1 * t1 + p2 * t2 + std::sqrt(std::max(0.0f, 1.0f - p1 * p1 - p2 * p2)) * v;
-
-    // -- unstretch and normalize the normal
-
-    Vector microfacet_normal = normalize(Vector(roughness * n.x, std::max(0.0f, n.y), roughness * n.z));
+    // warp to the hemisphere configuration
+    Vector wiStd = normalize(Vector(wo.x * roughness, wo.y * roughness, wo.z));
+    // sample the hemisphere
+    Vector wmStd = SampleVndf_Hemisphere(random_number_generator, wiStd);
+    // warp back to the ellipsoid configuration
+    Vector microfacet_normal = normalize(Vector(wmStd.x * roughness, wmStd.y * roughness, wmStd.z));
+    microfacet_normal = rotate_vector_around_normal(surface_normal, microfacet_normal);
 
     float VoH = std::max(dot(wo, microfacet_normal), 0.0f);
     float NoH = std::max(dot(microfacet_normal, surface_normal), 0.0f);
     float NoV = std::max(dot(wo, surface_normal), 0.0f);
-    pdf = G1_GGX_Schlick(VoH, alpha) * VoH * GGX_normal_distribution(alpha, NoH) / (NoV * 4 * VoH);
+    pdf = G1_schlick_ggx(VoH, alpha * alpha) * VoH * GGX_normal_distribution(alpha * alpha, NoH) / (NoV * 4 * VoH);
 
     return microfacet_normal;
 }
 
-float SmithGGXMasking(Vector normal, Vector wi, Vector wo, float a2)
+float SmithGGXMasking(Vector normal, Vector wo, float a2)
 {
-    float dotNL = dot(normal, wi);
     float dotNV = dot(normal, wo);
     float denomC = std::sqrt(a2 + (1.0f - a2) * dotNV * dotNV) + dotNV;
 
@@ -403,7 +387,7 @@ float SmithGGXMaskingShadowing(Vector normal, Vector wi, Vector wo, float a2)
 
 Color RenderKernel::cook_torrance_brdf_importance_sample(const SimpleMaterial& material, const Vector& view_direction, const Vector& surface_normal, Vector& output_direction, float& pdf, xorshift32_generator& random_number_generator) const
 {
-    pdf = 1.0f;
+    pdf = 0.0f;
 
     float metalness = material.metalness;
     float roughness = material.roughness;
@@ -434,10 +418,8 @@ Color RenderKernel::cook_torrance_brdf_importance_sample(const SimpleMaterial& m
     {
         Color F0 = Color(0.04f * (1.0f - metalness)) + metalness * material.diffuse;
         Color F = fresnel_schlick(F0, VoH);
-        float G1 = SmithGGXMasking(microfacet_normal, to_light_direction, view_direction, alpha);
-        float G2 = SmithGGXMaskingShadowing(microfacet_normal, to_light_direction, view_direction, alpha);
-
-        pdf = 1.0f;
+        float G1 = SmithGGXMasking(surface_normal, view_direction, alpha);
+        float G2 = SmithGGXMaskingShadowing(surface_normal, to_light_direction, view_direction, alpha);
 
         return F * (G2 / G1);
 
@@ -446,42 +428,40 @@ Color RenderKernel::cook_torrance_brdf_importance_sample(const SimpleMaterial& m
         return Color(0.0f);
     }
 
-    //Color brdf_color = Color(0.0f, 0.0f, 0.0f);
-    //Color base_color = material.diffuse;
+//    Color brdf_color = Color(0.0f, 0.0f, 0.0f);
+//    Color base_color = material.diffuse;
 
-    //float NoV = std::max(0.0f, dot(surface_normal, view_direction));
-    //float NoL = std::max(0.0f, dot(surface_normal, to_light_direction));
-    //float NoH = std::max(0.0f, dot(surface_normal, halfway_vector));
-    //float VoH = std::max(0.0f, dot(halfway_vector, view_direction));
+//    float NoV = std::max(0.0f, dot(surface_normal, view_direction));
+//    float NoL = std::max(0.0f, dot(surface_normal, to_light_direction));
+//    float NoH = std::max(0.0f, dot(surface_normal, halfway_vector));
+//    float VoH = std::max(0.0f, dot(halfway_vector, view_direction));
 
-    //if (NoV > 0.0f && NoL > 0.0f && NoH > 0.0f)
-    //{
-    //    /////////// Cook Torrance BRDF //////////
-    //    Color F;
-    //    float D, G;
+//    if (NoV > 0.0f && NoL > 0.0f && NoH > 0.0f)
+//    {
+//        /////////// Cook Torrance BRDF //////////
+//        Color F;
+//        float D, G;
 
-    //    //TODO check metalness parce que avec metalness = 1.0f, on a quand même des reflets blanc sur le mur vert
-    //    //On devrait pas avoir des reflets verts metallic si on a metalness a 1.0 ?
-    //    //F0 = 0.04 for dielectrics, 1.0 for metals (approximation)
-    //    Color F0 = Color(0.04f * (1.0f - metalness)) + metalness * base_color;
+//        //F0 = 0.04 for dielectrics, 1.0 for metals (approximation)
+//        Color F0 = Color(0.04f * (1.0f - metalness)) + metalness * base_color;
 
-    //    //GGX Distribution function
-    //    F = fresnel_schlick(F0, VoH);
-    //    D = GGX_normal_distribution(alpha, NoH);
-    //    G = GGX_smith_masking_shadowing(alpha, NoV, NoL);
+//        //GGX Distribution function
+//        F = fresnel_schlick(F0, VoH);
+//        D = GGX_normal_distribution(alpha, NoH);
+//        G = GGX_smith_masking_shadowing(alpha, NoV, NoL);
 
-    //    Color kD = Color(1.0f - metalness); //Metals do not have a diffuse part
-    //    kD *= Color(1.0f) - F;//Only the transmitted light is diffused
+//        Color kD = Color(1.0f - metalness); //Metals do not have a diffuse part
+//        kD *= Color(1.0f) - F;//Only the transmitted light is diffused
 
-    //    Color diffuse_part = kD * base_color / (float)M_PI;
-    //    Color specular_part = (F * D * G) / (4.0f * NoV * NoL);
+//        Color diffuse_part = kD * base_color / (float)M_PI;
+//        Color specular_part = (F * D * G) / (4.0f * NoV * NoL);
 
-    //    //pdf = D * NoH / (4.0f * VoH);
+//        //pdf = D * NoH / (4.0f * VoH);
 
-    //    brdf_color = diffuse_part + specular_part;// / pdf;
-    //}
+//        brdf_color = diffuse_part + specular_part;// / pdf;
+//    }
 
-    //return brdf_color;
+//    return brdf_color;
 }
 
 bool RenderKernel::intersect_scene(const Ray& ray, HitInfo& closest_hit_info) const
