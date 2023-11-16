@@ -106,6 +106,24 @@ Image Utils::read_image_float(const std::string& filepath, int& image_width, int
     return output;
 }
 
+std::vector<float> Utils::compute_env_map_cdf(const Image &skysphere)
+{
+    std::vector<float> out(skysphere.height() * skysphere.width());
+    out[0] = 0.0f;
+
+    for (int y = 0; y < skysphere.height(); y++)
+    {
+        for (int x = 0; x < skysphere.width(); x++)
+        {
+            int index = y * skysphere.width() + x;
+
+            out[index] = out[std::max(index - 1, 0)] + skysphere.luminance_of_pixel(x, y);
+        }
+    }
+
+    return out;
+}
+
 Image Utils::OIDN_denoise(const Image& image, float blend_factor)
 {
     // Create an Open Image Denoise device

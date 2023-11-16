@@ -32,6 +32,14 @@ Sphere add_sphere_to_scene(ParsedOBJ& parsed_obj, const Point& center, float rad
 int dichotomie(std::vector<float> bins, float random)
 {
     return 0;
+
+//    int pointer_left = 0, pointer_right = 1;
+//    while (!(bins[pointer_left] < random && bins[pointer_right] > random))
+//    {
+//        if (bins[pointer_left] > random)
+//            pointer_left = (pointer_left + pointer_right) / 2;
+//        else if (bins[pointer_left] > random)
+//    }
 }
 
 int main(int argc, char* argv[])
@@ -80,9 +88,9 @@ int main(int argc, char* argv[])
 
 
     std::cout << "Reading OBJ..." << std::endl;
-    ParsedOBJ parsed_obj = Utils::parse_obj("../SYCL-ray-tracing/data/OBJs/cornell_pbr.obj");
+    //ParsedOBJ parsed_obj = Utils::parse_obj("../SYCL-ray-tracing/data/OBJs/cornell_pbr.obj");
     //ParsedOBJ parsed_obj = Utils::parse_obj("../SYCL-ray-tracing/data/OBJs/pbrt_dragon.obj");
-    //ParsedOBJ parsed_obj = Utils::parse_obj("../SYCL-ray-tracing/data/OBJs/MIS.obj");
+    ParsedOBJ parsed_obj = Utils::parse_obj("../SYCL-ray-tracing/data/OBJs/MIS.obj");
 
     //Sphere sphere = add_sphere_to_scene(parsed_obj, Point(0.3275, 0.7, 0.3725), 0.2, SimpleMaterial {Color(0.0f), Color(1.0f, 0.71, 0.29), 1.0f, 0.4f}, parsed_obj.triangles.size());
     //std::vector<Sphere> spheres = { sphere };
@@ -99,8 +107,10 @@ int main(int argc, char* argv[])
     int skysphere_width, skysphere_height;
     std::cout << "Reading Environment Map..." << std::endl;
     Image skysphere_data = Utils::read_image_float("../SYCL-ray-tracing/data/Skyspheres/evening_road_01_puresky_8k.hdr", skysphere_width, skysphere_height);
+    std::vector<float> env_map_cdf = Utils::compute_env_map_cdf(skysphere_data);
+
     std::cout << "Importance Sampling Environment Map... ";
-    std::vector<ImageBin> skysphere_importance_bins = Utils::importance_split_skysphere(skysphere_data);
+    std::vector<ImageBin> skysphere_importance_bins;// = Utils::importance_split_skysphere(skysphere_data);
     std::cout << skysphere_importance_bins.size() << " bins" << std::endl;
 
     Utils::write_env_map_bins_to_file("sky_bins.hdr", skysphere_data, skysphere_importance_bins);
@@ -118,10 +128,11 @@ int main(int argc, char* argv[])
         sphere_buffer,
         bvh,
         skysphere_data,
+        env_map_cdf,
         skysphere_importance_bins);
+    //render_kernel.set_camera(Camera::CORNELL_BOX_CAMERA);
     //render_kernel.set_camera(Camera::PBRT_DRAGON_CAMERA);
-    render_kernel.set_camera(Camera::CORNELL_BOX_CAMERA);
-    //render_kernel.set_camera(Camera::MIS_CAMERA);
+    render_kernel.set_camera(Camera::MIS_CAMERA);
 
     render_kernel.render();
 

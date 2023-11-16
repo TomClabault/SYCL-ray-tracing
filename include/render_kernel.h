@@ -10,9 +10,9 @@
 #include "triangle.h"
 #include "xorshift.h"
 
-#define SAMPLES_PER_KERNEL 64
-#define MAX_BOUNCES 15
-#define USE_BVH 0
+#define SAMPLES_PER_KERNEL 1
+#define MAX_BOUNCES 2
+#define USE_BVH 1
 
 #define TILE_SIZE_X 8
 #define TILE_SIZE_Y TILE_SIZE_X
@@ -35,6 +35,7 @@ public:
                  const std::vector<Sphere>& analytic_spheres_buffer,
                  BVH& bvh,
                  const Image& skysphere,
+                 const std::vector<float>& env_map_cdf,
                  const std::vector<ImageBin>& env_map_bins) : 
         m_width(width), m_height(height),
         m_frame_buffer(image_buffer),
@@ -45,6 +46,7 @@ public:
         m_sphere_buffer(analytic_spheres_buffer),
         m_bvh(bvh),
         m_environment_map(skysphere),
+        m_env_map_cdf(env_map_cdf),
         m_env_map_bins(env_map_bins) {}
 
     void set_camera(Camera camera) { m_camera = camera; }
@@ -68,6 +70,7 @@ public:
     bool intersect_scene_bvh(const Ray& ray, HitInfo& closest_hit_info) const;
     bool INTERSECT_SCENE(const Ray& ray, HitInfo& hit_info)const ;
 
+    void env_map_cdf_search(float value, int& x, int& y) const;
     Color sample_environment_map_from_direction(const Vector& direction) const;
     Color sample_environment_map(const Ray& ray, const HitInfo& closest_hit_info, const SimpleMaterial& material, xorshift32_generator& random_number_generator) const;
     Color sample_light_sources(const Ray& ray, const HitInfo& closest_hit_info, const SimpleMaterial& material, xorshift32_generator& random_number_generator) const;
@@ -89,6 +92,7 @@ private:
     const BVH& m_bvh;
 
     const Image& m_environment_map;
+    const std::vector<float>& m_env_map_cdf;
     const std::vector<ImageBin>& m_env_map_bins;
 
     Camera m_camera;

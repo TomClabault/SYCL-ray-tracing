@@ -75,6 +75,11 @@ struct Color
         return *this;
     }
 
+    inline float luminance() const
+    {
+        return 0.3086f * r + 0.6094f * g + 0.0820f * b;
+    }
+
     inline float power( ) const
     {
         return (r+g+b) / 3;

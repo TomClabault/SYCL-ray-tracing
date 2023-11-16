@@ -111,7 +111,7 @@ void RenderKernel::ray_trace_pixel(int x, int y) const
                     // ---------- Direct lighting light sources ---------- //
                     // --------------------------------------------------- //
                     Color light_sources_radiance = sample_light_sources(ray, closest_hit_info, material, random_number_generator);
-                    Color env_map_radiance = sample_environment_map(ray, closest_hit_info, material, random_number_generator);
+                    Color env_map_radiance;// = sample_environment_map(ray, closest_hit_info, material, random_number_generator);
 
                     // --------------------------------------- //
                     // ---------- Indirect lighting ---------- //
@@ -144,7 +144,7 @@ void RenderKernel::ray_trace_pixel(int x, int y) const
             }
             else if (next_ray_state == MISSED)
             {
-                if (bounce == 1)
+                if (bounce == 100)
                 {
                     //We're only getting the skysphere radiance for the first rays because the
                     //syksphere is importance sampled
@@ -439,7 +439,7 @@ Color RenderKernel::cook_torrance_brdf_importance_sample(const SimpleMaterial& m
 
         pdf = D * NoH / (4.0f * VoH);
 
-        brdf_color = diffuse_part + specular_part;// / pdf;
+        brdf_color = diffuse_part + specular_part;
     }
 
     return brdf_color;
@@ -600,51 +600,151 @@ Color RenderKernel::sample_environment_map_from_direction(const Vector& directio
     return m_environment_map[y * m_environment_map.width() + x];
 }
 
+void RenderKernel::env_map_cdf_search(float value, int& x, int& y) const
+{
+    //First searching a line to sample
+
+    int lower = 0;
+    int upper = m_environment_map.height() - 1;
+    while (lower < upper)
+    {
+        int mid = (lower + upper) >> 1;
+        if (value < m_env_map_cdf[m_environment_map.width() - 1 + mid * m_environment_map.width()])
+            upper = mid;
+        else
+            lower = mid + 1;
+    }
+    y = std::max(std::min(lower, m_environment_map.height()), 0);
+
+    lower = 0;
+    upper = m_environment_map.width() - 1;
+    while (lower < upper)
+    {
+        int mid = (lower + upper) >> 1;
+        if (value < m_env_map_cdf[mid + y * m_environment_map.width()])
+            upper = mid;
+        else
+            lower = mid + 1;
+    }
+    x = std::max(std::min(lower, m_environment_map.width()), 0);
+
+//    int lower = 0;
+//    int upper = m_environment_map.height() - 1;
+
+//    int x_index = m_environment_map.width() - 1;
+//    while (lower < upper)
+//    {
+//        int y_index = (lower + upper) / 2;
+//        int env_map_index = y_index * m_environment_map.width() + x_index;
+
+//        if (value < m_env_map_cdf[env_map_index])
+//            upper = y_index;
+//        else
+//            lower = y_index + 1;
+//    }
+//    y = std::max(std::min(lower, m_environment_map.height()), 0);
+
+//    //Then sampling the line itself
+//    lower = 0;
+//    upper = m_environment_map.width() - 1;
+
+//    int y_index = y;
+//    while (lower < upper)
+//    {
+//        int x_index = (lower + upper) / 2;
+//        int env_map_index = y_index * m_environment_map.width() + x_index;
+
+//        if (value < m_env_map_cdf[env_map_index])
+//            upper = x_index;
+//        else
+//            lower = x_index + 1;
+//    }
+//    x = std::max(std::min(lower, m_environment_map.width()), 0);
+}
+
 Color RenderKernel::sample_environment_map(const Ray& ray, const HitInfo& closest_hit_info, const SimpleMaterial& material, xorshift32_generator& random_number_generator) const
 {
-    float num_bins = m_env_map_bins.size();
-    int random_bin_index = num_bins * random_number_generator();
-    ImageBin bin = m_env_map_bins[random_bin_index];
+    float env_map_total_sum = m_env_map_cdf[m_env_map_cdf.size() - 1];
 
-    float bin_width = bin.x1 - bin.x0;
-    float bin_height = bin.y1 - bin.y0;
+    int x, y;
+    env_map_cdf_search(random_number_generator() * env_map_total_sum, x, y);
 
-    // Generate a random sample from within the bin
-    float u = bin_width * random_number_generator() + bin.x0;
-    float v = bin_height * random_number_generator() + bin.y0;
-
-    float env_map_area = m_environment_map.width() * m_environment_map.height();
-    u /= env_map_area;
-    v /= env_map_area;
-
+    float u = (float)x / m_environment_map.width();
+    float v = (float)y / m_environment_map.height();
     float phi = u * 2.0f * M_PI;
     float theta = v * M_PI;
 
-    float sin_theta = std::sin(theta);
-
-    // Convert to cartesian coordinates
-    Vector sampled_dir = Vector(std::cos(phi) * sin_theta, std::sin(phi) * sin_theta, std::cos(theta));
-    float cosine_term = std::max(dot(sampled_dir, closest_hit_info.normal_at_intersection), 0.0f);
-
     Color env_sample;
-    if (cosine_term > 0.0f)
+    float sin_theta = std::sin(theta);
+    if (sin(theta) > 0.0)
     {
-        float bin_area = bin_width * bin_height;
-        float bin_pdf = env_map_area / (num_bins * bin_area);
-        float env_map_pdf = sin_theta == 0.0 ? 0.0 : bin_pdf / (2.0 * M_PI * M_PI * sin_theta);
+        float cos_theta = std::sqrt(1.0f - sin_theta * sin_theta);
 
-        Color brdf = cook_torrance_brdf(material, sampled_dir, -ray.direction, closest_hit_info.normal_at_intersection);
-        float brdf_pdf = cook_torrance_brdf_pdf(material, -ray.direction, sampled_dir, closest_hit_info.normal_at_intersection);
-        float mis_weight = power_heuristic(env_map_pdf, brdf_pdf);
-        mis_weight = 1.0f;//TODO remove, debug only
+        // Convert to cartesian coordinates
+        Vector sampled_direction = Vector(-sin_theta * cos(phi), cos_theta, -sin_theta * sin(phi));
 
-        HitInfo trash;
-        if (!INTERSECT_SCENE(Ray(closest_hit_info.inter_point + closest_hit_info.normal_at_intersection * 1.0e-5f, sampled_dir), trash))
+        float cosine_term = dot(closest_hit_info.normal_at_intersection, sampled_direction);
+        if  (cosine_term < 0.0f)
         {
-            Color env_map_radiance = sample_environment_map_from_direction(sampled_dir);
-            env_sample = brdf * cosine_term * mis_weight * env_map_radiance / env_map_pdf;
+            HitInfo trash;
+            if (!INTERSECT_SCENE(Ray(closest_hit_info.inter_point + closest_hit_info.normal_at_intersection * 1.0e-4f, sampled_direction), trash))
+            {
+                float env_map_pdf = m_environment_map.luminance_of_pixel(x, y) / env_map_total_sum;
+                env_map_pdf = (env_map_pdf * m_environment_map.width() * m_environment_map.height()) / (2.0f * M_PI * M_PI * sin_theta);
+
+                Color env_map_radiance = m_environment_map(x, y);
+                Color brdf = cook_torrance_brdf(material, sampled_direction, -ray.direction, closest_hit_info.normal_at_intersection);
+                float brdf_pdf = cook_torrance_brdf_pdf(material, -ray.direction, sampled_direction, closest_hit_info.normal_at_intersection);
+
+                float mis_weight = power_heuristic(env_map_pdf, brdf_pdf);
+                env_sample = brdf * cosine_term * mis_weight * env_map_radiance / env_map_pdf;
+            }
         }
     }
+
+//    float num_bins = m_env_map_bins.size();
+//    int random_bin_index = num_bins * random_number_generator();
+//    ImageBin bin = m_env_map_bins[random_bin_index];
+
+//    float bin_width = bin.x1 - bin.x0;
+//    float bin_height = bin.y1 - bin.y0;
+
+//    // Generate a random sample from within the bin
+//    float u = bin_width * random_number_generator() + bin.x0;
+//    float v = bin_height * random_number_generator() + bin.y0;
+
+//    float env_map_area = m_environment_map.width() * m_environment_map.height();
+//    u /= env_map_area;
+//    v /= env_map_area;
+
+//    float phi = u * 2.0f * M_PI;
+//    float theta = v * M_PI;
+
+//    float sin_theta = std::sin(theta);
+
+//    // Convert to cartesian coordinates
+//    Vector sampled_dir = Vector(std::cos(phi) * sin_theta, std::sin(phi) * sin_theta, std::cos(theta));
+//    float cosine_term = std::max(dot(sampled_dir, closest_hit_info.normal_at_intersection), 0.0f);
+
+//    Color env_sample;
+//    if (cosine_term > 0.0f)
+//    {
+//        float bin_area = bin_width * bin_height;
+//        float bin_pdf = env_map_area / (num_bins * bin_area);
+//        float env_map_pdf = sin_theta == 0.0 ? 0.0 : bin_pdf / (2.0 * M_PI * M_PI * sin_theta);
+
+//        Color brdf = cook_torrance_brdf(material, sampled_dir, -ray.direction, closest_hit_info.normal_at_intersection);
+//        float brdf_pdf = cook_torrance_brdf_pdf(material, -ray.direction, sampled_dir, closest_hit_info.normal_at_intersection);
+//        float mis_weight = power_heuristic(env_map_pdf, brdf_pdf);
+//        mis_weight = 1.0f;//TODO remove, debug only
+
+//        HitInfo trash;
+//        if (!INTERSECT_SCENE(Ray(closest_hit_info.inter_point + closest_hit_info.normal_at_intersection * 1.0e-5f, sampled_dir), trash))
+//        {
+//            Color env_map_radiance = sample_environment_map_from_direction(sampled_dir);
+//            env_sample = brdf * cosine_term * mis_weight * env_map_radiance / env_map_pdf;
+//        }
+//    }
 
 
 
@@ -653,83 +753,85 @@ Color RenderKernel::sample_environment_map(const Ray& ray, const HitInfo& closes
     float brdf_sample_pdf;
     Color brdf_imp_sampling = cook_torrance_brdf_importance_sample(material, -ray.direction, closest_hit_info.normal_at_intersection, brdf_sampled_dir, brdf_sample_pdf, random_number_generator);
 
-    cosine_term = std::max(dot(closest_hit_info.normal_at_intersection, brdf_sampled_dir), 0.0f);
+    float cosine_term = std::max(dot(closest_hit_info.normal_at_intersection, brdf_sampled_dir), 0.0f);
     Color brdf_sample;
     if (brdf_sample_pdf != 0.0f && cosine_term > 0.0f)
     {
         Color skysphere_color = sample_environment_map_from_direction(brdf_sampled_dir);
-        float mis_weight = power_heuristic(brdf_sample_pdf, (1.0f / 4.0f * M_PI));//TODO env map PDF incorrect
+        float skysphere_pdf = skysphere_color.luminance() / m_env_map_cdf[m_env_map_cdf.size() - 1];
+
+        float mis_weight = power_heuristic(brdf_sample_pdf, skysphere_pdf);//TODO env map PDF incorrect
 
         HitInfo trash;
         if (!INTERSECT_SCENE(Ray(closest_hit_info.inter_point + closest_hit_info.normal_at_intersection * 1.0e-5f, brdf_sampled_dir), trash))
             brdf_sample = skysphere_color * mis_weight * cosine_term * brdf_imp_sampling / brdf_sample_pdf;
     }
 
-    return env_sample;//TODO remove, debug only
+    //return env_sample;//TODO remove, debug only
     return brdf_sample + env_sample;
 
-    //Vector sampled_direction;
+//    //Vector sampled_direction;
 
-    //int env_map_bin_area;
-    //int random_pixel_coord_x, random_pixel_coord_y;
-    //float sin_theta;
+//    //int env_map_bin_area;
+//    //int random_pixel_coord_x, random_pixel_coord_y;
+//    //float sin_theta;
 
-    //do
-    //{
-    //    int random_bin_index = m_env_map_bins.size() * random_number_generator();
-    //    ImageBin env_map_bin = m_env_map_bins[random_bin_index];
+//    //do
+//    //{
+//    //    int random_bin_index = m_env_map_bins.size() * random_number_generator();
+//    //    ImageBin env_map_bin = m_env_map_bins[random_bin_index];
 
-    //    int bin_width = env_map_bin.x1 - env_map_bin.x0;
-    //    int bin_height = env_map_bin.y1 - env_map_bin.y0;
-    //    env_map_bin_area = bin_width * bin_height;
+//    //    int bin_width = env_map_bin.x1 - env_map_bin.x0;
+//    //    int bin_height = env_map_bin.y1 - env_map_bin.y0;
+//    //    env_map_bin_area = bin_width * bin_height;
 
-    //    random_pixel_coord_x = random_number_generator() * bin_width + env_map_bin.x0;
-    //    random_pixel_coord_y = random_number_generator() * bin_height + env_map_bin.y0;
+//    //    random_pixel_coord_x = random_number_generator() * bin_width + env_map_bin.x0;
+//    //    random_pixel_coord_y = random_number_generator() * bin_height + env_map_bin.y0;
 
-    //    //Converting from pixel coordinates to world direction
-    //    float u = (float)random_pixel_coord_x / m_environment_map.width();
-    //    float v = (float)random_pixel_coord_y / m_environment_map.height();
+//    //    //Converting from pixel coordinates to world direction
+//    //    float u = (float)random_pixel_coord_x / m_environment_map.width();
+//    //    float v = (float)random_pixel_coord_y / m_environment_map.height();
 
-    //    float phi = u * 2.0f * M_PI;
-    //    float theta = v * M_PI;
+//    //    float phi = u * 2.0f * M_PI;
+//    //    float theta = v * M_PI;
 
-    //    sin_theta = std::sin(theta);
-    //    float cos_theta = std::sqrt(1 - sin_theta * sin_theta);
+//    //    sin_theta = std::sin(theta);
+//    //    float cos_theta = std::sqrt(1 - sin_theta * sin_theta);
 
-    //    // Convert to cartesian coordinates
-    //    sampled_direction = Vector(std::cos(phi) * sin_theta, std::sin(phi) * sin_theta, cos_theta);
+//    //    // Convert to cartesian coordinates
+//    //    sampled_direction = Vector(std::cos(phi) * sin_theta, std::sin(phi) * sin_theta, cos_theta);
 
-    //    //While we sampled a direction behind the object (our objects are opaque)
-    //    //so we're not going to see the environment map if it's below the surface
-    //    //of the object
-    //} while (false);// (dot(sampled_direction, closest_hit_info.normal_at_intersection) < 0);
-    //if (dot(sampled_direction, closest_hit_info.normal_at_intersection) < 0)
-    //    return Color(0.0f);
+//    //    //While we sampled a direction behind the object (our objects are opaque)
+//    //    //so we're not going to see the environment map if it's below the surface
+//    //    //of the object
+//    //} while (false);// (dot(sampled_direction, closest_hit_info.normal_at_intersection) < 0);
+//    //if (dot(sampled_direction, closest_hit_info.normal_at_intersection) < 0)
+//    //    return Color(0.0f);
 
-    //HitInfo trash;
-    //if (INTERSECT_SCENE(Ray(ray.origin + closest_hit_info.normal_at_intersection * 1.0e-5f, sampled_direction), trash))
-    //    return Color(0.0f);
-    //else
-    //{
-    //    if (sin_theta == 0.0f)
-    //        return Color(0.0f);
-    //    else
-    //    {
-    //        float pixel_pdf = (float)(m_environment_map.width() * m_environment_map.height()) / (m_env_map_bins.size() * env_map_bin_area);
-    //        //Conversion to solid angle
-    //        float skysphere_pdf = pixel_pdf / (2.0f * M_PI * M_PI * sin_theta);
+//    //HitInfo trash;
+//    //if (INTERSECT_SCENE(Ray(ray.origin + closest_hit_info.normal_at_intersection * 1.0e-5f, sampled_direction), trash))
+//    //    return Color(0.0f);
+//    //else
+//    //{
+//    //    if (sin_theta == 0.0f)
+//    //        return Color(0.0f);
+//    //    else
+//    //    {
+//    //        float pixel_pdf = (float)(m_environment_map.width() * m_environment_map.height()) / (m_env_map_bins.size() * env_map_bin_area);
+//    //        //Conversion to solid angle
+//    //        float skysphere_pdf = pixel_pdf / (2.0f * M_PI * M_PI * sin_theta);
 
-    //        Color brdf = cook_torrance_brdf(material, sampled_direction, -ray.direction, closest_hit_info.normal_at_intersection);
+//    //        Color brdf = cook_torrance_brdf(material, sampled_direction, -ray.direction, closest_hit_info.normal_at_intersection);
 
-    //        //Incoming radiance in the direction importance sampled from the env map pdf
-    //        Color skysphere_sample_radiance = m_environment_map(random_pixel_coord_x, random_pixel_coord_y);
-    //        skysphere_sample_radiance = sample_environment_map_from_direction(normalize(sampled_direction));
+//    //        //Incoming radiance in the direction importance sampled from the env map pdf
+//    //        Color skysphere_sample_radiance = m_environment_map(random_pixel_coord_x, random_pixel_coord_y);
+//    //        skysphere_sample_radiance = sample_environment_map_from_direction(normalize(sampled_direction));
 
-    //        float cosine_term = dot(closest_hit_info.normal_at_intersection, sampled_direction);
+//    //        float cosine_term = dot(closest_hit_info.normal_at_intersection, sampled_direction);
 
-    //        return skysphere_sample_radiance / skysphere_pdf * brdf * cosine_term;
-    //    }
-    //}
+//    //        return skysphere_sample_radiance / skysphere_pdf * brdf * cosine_term;
+//    //    }
+//    //}
 }
 
 Color RenderKernel::sample_light_sources(const Ray& ray, const HitInfo& closest_hit_info, const SimpleMaterial& material, xorshift32_generator& random_number_generator) const
@@ -768,13 +870,13 @@ Color RenderKernel::sample_light_sources(const Ray& ray, const HitInfo& closest_
                 Color Li = emissive_triangle_material.emission * std::max(dot(closest_hit_info.normal_at_intersection, shadow_ray_direction_normalized), 0.0f);
                 float cosine_term = dot(closest_hit_info.normal_at_intersection, shadow_ray_direction_normalized);
 
-                mis_weight = 1.0f;//TODO remove, only for debug
+                //mis_weight = 1.0f;//TODO remove, only for debug
                 light_source_radiance_mis = Li * cosine_term * brdf * mis_weight / light_sample_pdf;
             }
         }
     }
 
-    return light_source_radiance_mis;//TODO remove, only for debug
+    //return light_source_radiance_mis;//TODO remove, only for debug
 
     Color brdf_radiance_mis;
 
