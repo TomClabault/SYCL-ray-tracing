@@ -88,7 +88,8 @@ int main(int argc, char* argv[])
 
 
     std::cout << "Reading OBJ..." << std::endl;
-    ParsedOBJ parsed_obj = Utils::parse_obj("../SYCL-ray-tracing/data/OBJs/cornell_pbr.obj");
+    ParsedOBJ parsed_obj;
+    //ParsedOBJ parsed_obj = Utils::parse_obj("../SYCL-ray-tracing/data/OBJs/cornell_pbr.obj");
     //ParsedOBJ parsed_obj = Utils::parse_obj("../SYCL-ray-tracing/data/OBJs/pbrt_dragon.obj");
     //ParsedOBJ parsed_obj = Utils::parse_obj("../SYCL-ray-tracing/data/OBJs/MIS.obj");
 
@@ -106,7 +107,7 @@ int main(int argc, char* argv[])
 
     int skysphere_width, skysphere_height;
     std::cout << "Reading Environment Map..." << std::endl;
-    Image skysphere_data = Utils::read_image_float("../SYCL-ray-tracing/data/Skyspheres/evening_road_01_puresky_8k.hdr", skysphere_width, skysphere_height);
+    Image skysphere_data = Utils::read_image_float("../SYCL-ray-tracing/data/Skyspheres/AllSkyFree_Sky_EpicGloriousPink_Equirect.jpg", skysphere_width, skysphere_height);
     std::vector<float> env_map_cdf = Utils::compute_env_map_cdf(skysphere_data);
 
     std::cout << "Importance Sampling Environment Map... ";
