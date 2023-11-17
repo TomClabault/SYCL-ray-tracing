@@ -10,8 +10,8 @@
 #include "triangle.h"
 #include "xorshift.h"
 
-#define SAMPLES_PER_KERNEL 1
-#define MAX_BOUNCES 2
+#define SAMPLES_PER_KERNEL 64
+#define MAX_BOUNCES 15
 #define USE_BVH 1
 
 #define TILE_SIZE_X 8

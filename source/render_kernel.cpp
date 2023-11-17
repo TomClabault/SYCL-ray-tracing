@@ -144,7 +144,7 @@ void RenderKernel::ray_trace_pixel(int x, int y) const
             }
             else if (next_ray_state == MISSED)
             {
-                if (bounce == 100)
+                //if (bounce == 1)
                 {
                     //We're only getting the skysphere radiance for the first rays because the
                     //syksphere is importance sampled
@@ -183,8 +183,8 @@ void RenderKernel::ray_trace_pixel(int x, int y) const
 #include <omp.h>
 
 #define DEBUG_PIXEL 0
-#define PIXEL_X 270
-#define PIXEL_Y 168
+#define PIXEL_X 472
+#define PIXEL_Y 272
 void RenderKernel::render()
 {
     std::atomic<int> lines_completed = 0;
@@ -603,63 +603,38 @@ Color RenderKernel::sample_environment_map_from_direction(const Vector& directio
 void RenderKernel::env_map_cdf_search(float value, int& x, int& y) const
 {
     //First searching a line to sample
-
     int lower = 0;
     int upper = m_environment_map.height() - 1;
+
+    int x_index = m_environment_map.width() - 1;
     while (lower < upper)
     {
-        int mid = (lower + upper) >> 1;
-        if (value < m_env_map_cdf[m_environment_map.width() - 1 + mid * m_environment_map.width()])
-            upper = mid;
+        int y_index = (lower + upper) / 2;
+        int env_map_index = y_index * m_environment_map.width() + x_index;
+
+        if (value < m_env_map_cdf[env_map_index])
+            upper = y_index;
         else
-            lower = mid + 1;
+            lower = y_index + 1;
     }
     y = std::max(std::min(lower, m_environment_map.height()), 0);
 
+    //Then sampling the line itself
     lower = 0;
     upper = m_environment_map.width() - 1;
+
+    int y_index = y;
     while (lower < upper)
     {
-        int mid = (lower + upper) >> 1;
-        if (value < m_env_map_cdf[mid + y * m_environment_map.width()])
-            upper = mid;
+        int x_index = (lower + upper) / 2;
+        int env_map_index = y_index * m_environment_map.width() + x_index;
+
+        if (value < m_env_map_cdf[env_map_index])
+            upper = x_index;
         else
-            lower = mid + 1;
+            lower = x_index + 1;
     }
     x = std::max(std::min(lower, m_environment_map.width()), 0);
-
-//    int lower = 0;
-//    int upper = m_environment_map.height() - 1;
-
-//    int x_index = m_environment_map.width() - 1;
-//    while (lower < upper)
-//    {
-//        int y_index = (lower + upper) / 2;
-//        int env_map_index = y_index * m_environment_map.width() + x_index;
-
-//        if (value < m_env_map_cdf[env_map_index])
-//            upper = y_index;
-//        else
-//            lower = y_index + 1;
-//    }
-//    y = std::max(std::min(lower, m_environment_map.height()), 0);
-
-//    //Then sampling the line itself
-//    lower = 0;
-//    upper = m_environment_map.width() - 1;
-
-//    int y_index = y;
-//    while (lower < upper)
-//    {
-//        int x_index = (lower + upper) / 2;
-//        int env_map_index = y_index * m_environment_map.width() + x_index;
-
-//        if (value < m_env_map_cdf[env_map_index])
-//            upper = x_index;
-//        else
-//            lower = x_index + 1;
-//    }
-//    x = std::max(std::min(lower, m_environment_map.width()), 0);
 }
 
 Color RenderKernel::sample_environment_map(const Ray& ray, const HitInfo& closest_hit_info, const SimpleMaterial& material, xorshift32_generator& random_number_generator) const
@@ -684,7 +659,7 @@ Color RenderKernel::sample_environment_map(const Ray& ray, const HitInfo& closes
         Vector sampled_direction = Vector(-sin_theta * cos(phi), cos_theta, -sin_theta * sin(phi));
 
         float cosine_term = dot(closest_hit_info.normal_at_intersection, sampled_direction);
-        if  (cosine_term < 0.0f)
+        if  (cosine_term > 0.0f)
         {
             HitInfo trash;
             if (!INTERSECT_SCENE(Ray(closest_hit_info.inter_point + closest_hit_info.normal_at_intersection * 1.0e-4f, sampled_direction), trash))
@@ -697,10 +672,13 @@ Color RenderKernel::sample_environment_map(const Ray& ray, const HitInfo& closes
                 float brdf_pdf = cook_torrance_brdf_pdf(material, -ray.direction, sampled_direction, closest_hit_info.normal_at_intersection);
 
                 float mis_weight = power_heuristic(env_map_pdf, brdf_pdf);
+                mis_weight = 1.0f;//TODO REMOVE DEBUG
                 env_sample = brdf * cosine_term * mis_weight * env_map_radiance / env_map_pdf;
             }
         }
     }
+
+    return env_sample;
 
 //    float num_bins = m_env_map_bins.size();
 //    int random_bin_index = num_bins * random_number_generator();
