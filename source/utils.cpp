@@ -93,13 +93,13 @@ Image Utils::read_image_float(const std::string& filepath, int& image_width, int
     }
 
     Image output(image_width, image_height);
-    //Using the pixels pointer as an iterator
     for (int y = 0; y < image_height; y++)
     {
         for (int x = 0; x < image_width; x++)
         {
             int index = y * image_width + x;
-            output[index] = pow(Color(pixels[index * 3 + 0], pixels[index * 3 + 1], pixels[index * 3 + 2], 0.0f), 2.2f);
+            Color pixel_color = Color(pixels[index * 3 + 0], pixels[index * 3 + 1], pixels[index * 3 + 2], 0.0f);
+            output[index] = pow(pixel_color, 2.2f); //Gamma correction included
         }
     }
 

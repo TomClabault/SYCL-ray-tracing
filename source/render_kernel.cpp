@@ -110,7 +110,7 @@ void RenderKernel::ray_trace_pixel(int x, int y) const
                     // --------------------------------------------------- //
                     // ---------- Direct lighting light sources ---------- //
                     // --------------------------------------------------- //
-                    Color light_sources_radiance = sample_light_sources(ray, closest_hit_info, material, random_number_generator);
+                    Color light_sample_radiance = sample_light_sources(ray, closest_hit_info, material, random_number_generator);
                     Color env_map_radiance = sample_environment_map(ray, closest_hit_info, material, random_number_generator);
 
                     // --------------------------------------- //
@@ -124,7 +124,7 @@ void RenderKernel::ray_trace_pixel(int x, int y) const
                     
                     if (bounce == 0)
                         sample_color += material.emission;
-                    sample_color += (light_sources_radiance + env_map_radiance) * throughput;
+                    sample_color += (light_sample_radiance + env_map_radiance) * throughput;
 
                     if ((brdf.r == 0.0f && brdf.g == 0.0f && brdf.b == 0.0f) || brdf_pdf == 0.0f || std::isinf(brdf_pdf))
                     {
@@ -182,9 +182,9 @@ void RenderKernel::ray_trace_pixel(int x, int y) const
 #include <atomic>
 #include <omp.h>
 
-#define DEBUG_PIXEL 1
-#define PIXEL_X (1280/2/2)
-#define PIXEL_Y (720/2/2)
+#define DEBUG_PIXEL 0
+#define PIXEL_X 0
+#define PIXEL_Y ((720/2) - 1)
 void RenderKernel::render()
 {
     std::atomic<int> lines_completed = 0;
@@ -477,82 +477,6 @@ bool RenderKernel::intersect_scene(const Ray& ray, HitInfo& closest_hit_info) co
     return closest_hit_info.t > 0.0f;
 }
 
-/*
-* Flat BVH intersection for the GPU
-*/
-//inline bool RenderKernel::intersect_scene_bvh(const Ray& ray, HitInfo& closest_hit_info) const
-//{
-//    closest_hit_info.t = -1.0f;
-//
-//    FlattenedBVH::Stack stack;
-//    stack.push(0);//Pushing the root of the BVH
-//
-//    std::array<float, BVHConstants::PLANES_COUNT> denoms;
-//    std::array<float, BVHConstants::PLANES_COUNT> numers;
-//
-//    for (int i = 0; i < BVHConstants::PLANES_COUNT; i++)
-//    {
-//        denoms[i] = dot(BoundingVolume::PLANE_NORMALS[i], ray.direction);
-//        numers[i] = dot(BoundingVolume::PLANE_NORMALS[i], Vector(ray.origin));
-//    }
-//
-//    float closest_intersection_distance = -1;
-//    while (!stack.empty())
-//    {
-//        int node_index = stack.pop();
-//        const FlattenedBVH::FlattenedNode& node = m_bvh_nodes[node_index];
-//
-//        if (node.intersect_volume(denoms, numers))
-//        {
-//            if (node.is_leaf)
-//            {
-//                for (int i = 0; i < node.nb_triangles; i++)
-//                {
-//                    int triangle_index = node.triangles_indices[i];
-//
-//                    HitInfo local_hit_info;
-//                    if (m_triangle_buffer_access[triangle_index].intersect(ray, local_hit_info))
-//                    {
-//                        if (closest_intersection_distance > local_hit_info.t || closest_intersection_distance == -1)
-//                        {
-//                            closest_intersection_distance = local_hit_info.t;
-//                            closest_hit_info = local_hit_info;
-//                            closest_hit_info.material_index = m_materials_indices_buffer[triangle_index];
-//                        }
-//                    }
-//                }
-//            }
-//            else
-//            {
-//                stack.push(node.children[0]);
-//                stack.push(node.children[1]);
-//                stack.push(node.children[2]);
-//                stack.push(node.children[3]);
-//                stack.push(node.children[4]);
-//                stack.push(node.children[5]);
-//                stack.push(node.children[6]);
-//                stack.push(node.children[7]);
-//            }
-//        }
-//    }
-//
-//    for (int i = 0; i < m_sphere_buffer.size(); i++)
-//    {
-//        const Sphere& sphere = m_sphere_buffer[i];
-//        HitInfo hit_info;
-//        if (sphere.intersect(ray, hit_info))
-//        {
-//            if (hit_info.t < closest_intersection_distance || closest_intersection_distance == -1.0f)
-//            {
-//                closest_intersection_distance = hit_info.t;
-//                closest_hit_info = hit_info;
-//            }
-//        }
-//    }
-//
-//    return closest_hit_info.t > -1.0f;
-//}
-
 inline bool RenderKernel::intersect_scene_bvh(const Ray& ray, HitInfo& closest_hit_info) const
 {
     closest_hit_info.t == -1.0f;
@@ -594,8 +518,8 @@ Color RenderKernel::sample_environment_map_from_direction(const Vector& directio
     u = 0.5f + std::atan2(direction.z, direction.x) / (2.0f * (float)M_PI);
     v = 0.5f + std::asin(direction.y) / (float)M_PI;
 
-    int x = u * (m_environment_map.width() - 1);
-    int y = v * (m_environment_map.height() - 1);
+    int x = std::max(std::min((int)(u * m_environment_map.width()), m_environment_map.width() - 1), 0);
+    int y = std::max(std::min((int)(v * m_environment_map.height()), m_environment_map.height() - 1), 0);
 
     return m_environment_map[y * m_environment_map.width() + x];
 }
@@ -651,40 +575,34 @@ Color RenderKernel::sample_environment_map(const Ray& ray, const HitInfo& closes
 
     Color env_sample;
     float sin_theta = std::sin(theta);
-    if (sin(theta) > 0.0)
+    float cos_theta = std::cos(theta);
+
+    // Convert to cartesian coordinates
+    Vector sampled_direction = Vector(-sin_theta * cos(phi), -cos_theta, -sin_theta * sin(phi));
+
+    float cosine_term = dot(closest_hit_info.normal_at_intersection, sampled_direction);
+    if  (cosine_term > 0.0f)
     {
-        float cos_theta = std::sqrt(1.0f - sin_theta * sin_theta);
-
-        // Convert to cartesian coordinates
-        //TODO debug this for the direction to be (1, 0, 0) for theta = 0.5 PI and phi = PI -----> OK CHECK FOR OTHER DIRECTIONS
-        Vector sampled_direction = Vector(-sin_theta * cos(phi), cos_theta, -sin_theta * sin(phi));
-
-        float cosine_term = dot(closest_hit_info.normal_at_intersection, sampled_direction);
-        if  (cosine_term > 0.0f)
+        HitInfo trash;
+        if (!INTERSECT_SCENE(Ray(closest_hit_info.inter_point + closest_hit_info.normal_at_intersection * 1.0e-4f, sampled_direction), trash))
         {
-            HitInfo trash;
-            if (!INTERSECT_SCENE(Ray(closest_hit_info.inter_point + closest_hit_info.normal_at_intersection * 1.0e-4f, sampled_direction), trash))
-            {
-                float env_map_pdf = m_environment_map.luminance_of_pixel(x, y) / env_map_total_sum;
-                env_map_pdf = (env_map_pdf * m_environment_map.width() * m_environment_map.height()) / (2.0f * M_PI * M_PI * sin_theta);
+            float env_map_pdf = m_environment_map.luminance_of_pixel(x, y) / env_map_total_sum;
+            env_map_pdf = (env_map_pdf * m_environment_map.width() * m_environment_map.height()) / (2.0f * M_PI * M_PI * sin_theta);
 
-                Color env_map_radiance =  m_environment_map(x, y);
-                Color brdf = cook_torrance_brdf(material, sampled_direction, -ray.direction, closest_hit_info.normal_at_intersection);
-                float brdf_pdf = cook_torrance_brdf_pdf(material, -ray.direction, sampled_direction, closest_hit_info.normal_at_intersection);
+            Color env_map_radiance = m_environment_map(x, y);
+            Color brdf = cook_torrance_brdf(material, sampled_direction, -ray.direction, closest_hit_info.normal_at_intersection);
+            float brdf_pdf = cook_torrance_brdf_pdf(material, -ray.direction, sampled_direction, closest_hit_info.normal_at_intersection);
 
-                float mis_weight = power_heuristic(env_map_pdf, brdf_pdf);
-                env_sample = brdf * cosine_term * mis_weight * env_map_radiance / env_map_pdf;
-            }
+            float mis_weight = power_heuristic(env_map_pdf, brdf_pdf);
+            env_sample = brdf * cosine_term * mis_weight * env_map_radiance / env_map_pdf;
         }
     }
-
-    return env_sample;
 
     float brdf_sample_pdf;
     Vector brdf_sampled_dir;
     Color brdf_imp_sampling = cook_torrance_brdf_importance_sample(material, -ray.direction, closest_hit_info.normal_at_intersection, brdf_sampled_dir, brdf_sample_pdf, random_number_generator);
 
-    float cosine_term = std::max(dot(closest_hit_info.normal_at_intersection, brdf_sampled_dir), 0.0f);
+    cosine_term = std::max(dot(closest_hit_info.normal_at_intersection, brdf_sampled_dir), 0.0f);
     Color brdf_sample;
     if (brdf_sample_pdf != 0.0f && cosine_term > 0.0f)
     {
@@ -692,10 +610,15 @@ Color RenderKernel::sample_environment_map(const Ray& ray, const HitInfo& closes
         if (!INTERSECT_SCENE(Ray(closest_hit_info.inter_point + closest_hit_info.normal_at_intersection * 1.0e-5f, brdf_sampled_dir), trash))
         {
             Color skysphere_color = sample_environment_map_from_direction(brdf_sampled_dir);
-            float skysphere_pdf = skysphere_color.luminance() / m_env_map_cdf[m_env_map_cdf.size() - 1];
+            float theta_brdf_dir = std::acos(-brdf_sampled_dir.y);
+            float sin_theta_bdrf_dir = std::sin(theta_brdf_dir);
+            float env_map_pdf = skysphere_color.luminance() / m_env_map_cdf[m_env_map_cdf.size() - 1];
 
-            float mis_weight = power_heuristic(brdf_sample_pdf, skysphere_pdf);
+            //TODO missing reflection on the right side of the cornell box because of the PDF below
+            env_map_pdf *= m_environment_map.width() * m_environment_map.height();
+            env_map_pdf /= (2.0f * M_PI * M_PI * sin_theta_bdrf_dir);
 
+            float mis_weight = power_heuristic(brdf_sample_pdf, env_map_pdf);
             brdf_sample = skysphere_color * mis_weight * cosine_term * brdf_imp_sampling / brdf_sample_pdf;
         }
     }

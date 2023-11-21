@@ -12,7 +12,7 @@
 
 #define SAMPLES_PER_KERNEL 64
 #define MAX_BOUNCES 15
-#define USE_BVH 1
+#define USE_BVH 0
 
 #define TILE_SIZE_X 8
 #define TILE_SIZE_Y TILE_SIZE_X
@@ -100,3 +100,78 @@ private:
 
 #endif
 
+/*
+* Flat BVH intersection for the GPU
+*/
+//inline bool RenderKernel::intersect_scene_bvh(const Ray& ray, HitInfo& closest_hit_info) const
+//{
+//    closest_hit_info.t = -1.0f;
+//
+//    FlattenedBVH::Stack stack;
+//    stack.push(0);//Pushing the root of the BVH
+//
+//    std::array<float, BVHConstants::PLANES_COUNT> denoms;
+//    std::array<float, BVHConstants::PLANES_COUNT> numers;
+//
+//    for (int i = 0; i < BVHConstants::PLANES_COUNT; i++)
+//    {
+//        denoms[i] = dot(BoundingVolume::PLANE_NORMALS[i], ray.direction);
+//        numers[i] = dot(BoundingVolume::PLANE_NORMALS[i], Vector(ray.origin));
+//    }
+//
+//    float closest_intersection_distance = -1;
+//    while (!stack.empty())
+//    {
+//        int node_index = stack.pop();
+//        const FlattenedBVH::FlattenedNode& node = m_bvh_nodes[node_index];
+//
+//        if (node.intersect_volume(denoms, numers))
+//        {
+//            if (node.is_leaf)
+//            {
+//                for (int i = 0; i < node.nb_triangles; i++)
+//                {
+//                    int triangle_index = node.triangles_indices[i];
+//
+//                    HitInfo local_hit_info;
+//                    if (m_triangle_buffer_access[triangle_index].intersect(ray, local_hit_info))
+//                    {
+//                        if (closest_intersection_distance > local_hit_info.t || closest_intersection_distance == -1)
+//                        {
+//                            closest_intersection_distance = local_hit_info.t;
+//                            closest_hit_info = local_hit_info;
+//                            closest_hit_info.material_index = m_materials_indices_buffer[triangle_index];
+//                        }
+//                    }
+//                }
+//            }
+//            else
+//            {
+//                stack.push(node.children[0]);
+//                stack.push(node.children[1]);
+//                stack.push(node.children[2]);
+//                stack.push(node.children[3]);
+//                stack.push(node.children[4]);
+//                stack.push(node.children[5]);
+//                stack.push(node.children[6]);
+//                stack.push(node.children[7]);
+//            }
+//        }
+//    }
+//
+//    for (int i = 0; i < m_sphere_buffer.size(); i++)
+//    {
+//        const Sphere& sphere = m_sphere_buffer[i];
+//        HitInfo hit_info;
+//        if (sphere.intersect(ray, hit_info))
+//        {
+//            if (hit_info.t < closest_intersection_distance || closest_intersection_distance == -1.0f)
+//            {
+//                closest_intersection_distance = hit_info.t;
+//                closest_hit_info = hit_info;
+//            }
+//        }
+//    }
+//
+//    return closest_hit_info.t > -1.0f;
+//}
