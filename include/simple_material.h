@@ -9,7 +9,7 @@ struct SimpleMaterial
     Color diffuse = Color(1.0f, 0.2f, 0.7f);
 
     float metalness = 0.0f;
-    float roughness = 0.5f;
+    float roughness = 1.0f;
 };
 
 #endif

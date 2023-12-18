@@ -108,7 +108,7 @@ void RenderKernel::ray_trace_pixel(int x, int y) const
                     SimpleMaterial material = m_materials_buffer_access[material_index];
 
                     // --------------------------------------------------- //
-                    // ---------- Direct lighting light sources ---------- //
+                    // ----------------- Direct lighting ----------------- //
                     // --------------------------------------------------- //
                     Color light_sample_radiance = sample_light_sources(ray, closest_hit_info, material, random_number_generator);
                     Color env_map_radiance = sample_environment_map(ray, closest_hit_info, material, random_number_generator);
@@ -168,7 +168,7 @@ void RenderKernel::ray_trace_pixel(int x, int y) const
     m_frame_buffer[y * m_width + x] += final_color;
 
     const float gamma = 2.2f;
-    const float exposure = 0.75f;
+    const float exposure = 1.5f;
     Color hdrColor = m_frame_buffer[y * m_width + x];
 
     //Exposure tone mapping
@@ -183,8 +183,8 @@ void RenderKernel::ray_trace_pixel(int x, int y) const
 #include <omp.h>
 
 #define DEBUG_PIXEL 0
-#define PIXEL_X 0
-#define PIXEL_Y ((720/2) - 1)
+#define PIXEL_X 266
+#define PIXEL_Y 232
 void RenderKernel::render()
 {
     std::atomic<int> lines_completed = 0;
@@ -244,6 +244,7 @@ float GGX_smith_masking_shadowing(float roughness_squared, float NoV, float NoL)
 float RenderKernel::cook_torrance_brdf_pdf(const SimpleMaterial& material, const Vector& view_direction, const Vector& to_light_direction, const Vector& surface_normal) const
 {
     Vector microfacet_normal = normalize(view_direction + to_light_direction);
+
     float alpha = material.roughness * material.roughness;
 
     float VoH = std::max(0.0f, dot(view_direction, microfacet_normal));
@@ -657,18 +658,18 @@ Color RenderKernel::sample_light_sources(const Ray& ray, const HitInfo& closest_
                 Color brdf = cook_torrance_brdf(material, shadow_ray.direction, -ray.direction, closest_hit_info.normal_at_intersection);
 
                 float cook_torrance_pdf = cook_torrance_brdf_pdf(material, -ray.direction, shadow_ray_direction_normalized, closest_hit_info.normal_at_intersection);
-                float mis_weight = power_heuristic(light_sample_pdf, cook_torrance_pdf);
+                if (cook_torrance_pdf != 0.0f)
+                {
+                    float mis_weight = power_heuristic(light_sample_pdf, cook_torrance_pdf);
 
-                Color Li = emissive_triangle_material.emission * std::max(dot(closest_hit_info.normal_at_intersection, shadow_ray_direction_normalized), 0.0f);
-                float cosine_term = dot(closest_hit_info.normal_at_intersection, shadow_ray_direction_normalized);
+                    Color Li = emissive_triangle_material.emission;
+                    float cosine_term = dot(closest_hit_info.normal_at_intersection, shadow_ray_direction_normalized);
 
-                //mis_weight = 1.0f;//TODO remove, only for debug
-                light_source_radiance_mis = Li * cosine_term * brdf * mis_weight / light_sample_pdf;
+                    light_source_radiance_mis = Li * cosine_term * brdf * mis_weight / light_sample_pdf;
+                }
             }
         }
     }
-
-    //return light_source_radiance_mis;//TODO remove, only for debug
 
     Color brdf_radiance_mis;
 

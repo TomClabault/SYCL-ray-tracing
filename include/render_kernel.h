@@ -10,12 +10,9 @@
 #include "triangle.h"
 #include "xorshift.h"
 
-#define SAMPLES_PER_KERNEL 64
-#define MAX_BOUNCES 15
-#define USE_BVH 0
-
-#define TILE_SIZE_X 8
-#define TILE_SIZE_Y TILE_SIZE_X
+#define SAMPLES_PER_KERNEL 512
+#define MAX_BOUNCES 10
+#define USE_BVH 1
 
 struct LightSourceInformation
 {
@@ -35,8 +32,7 @@ public:
                  const std::vector<Sphere>& analytic_spheres_buffer,
                  BVH& bvh,
                  const Image& skysphere,
-                 const std::vector<float>& env_map_cdf,
-                 const std::vector<ImageBin>& env_map_bins) : 
+                 const std::vector<float>& env_map_cdf) : 
         m_width(width), m_height(height),
         m_frame_buffer(image_buffer),
         m_triangle_buffer_access(triangle_buffer_accessor),
@@ -46,8 +42,7 @@ public:
         m_sphere_buffer(analytic_spheres_buffer),
         m_bvh(bvh),
         m_environment_map(skysphere),
-        m_env_map_cdf(env_map_cdf),
-        m_env_map_bins(env_map_bins) {}
+        m_env_map_cdf(env_map_cdf) {}
 
     void set_camera(Camera camera) { m_camera = camera; }
 
@@ -93,7 +88,6 @@ private:
 
     const Image& m_environment_map;
     const std::vector<float>& m_env_map_cdf;
-    const std::vector<ImageBin>& m_env_map_bins;
 
     Camera m_camera;
 };

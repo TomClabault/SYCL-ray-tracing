@@ -83,13 +83,15 @@ int main(int argc, char* argv[])
         */
     }
 
-    const int width = 1280 / 2;
-    const int height = 720 / 2;
+    const int width = 1024;
+    const int height = 1024;
 
 
     std::cout << "Reading OBJ..." << std::endl;
     ParsedOBJ parsed_obj;
-    parsed_obj = Utils::parse_obj("../SYCL-ray-tracing/data/OBJs/cornell_pbr.obj");
+    //parsed_obj = Utils::parse_obj("../../data/cornell.obj");
+    //parsed_obj = Utils::parse_obj("../SYCL-ray-tracing/data/OBJs/cornell_pbr.obj");
+    parsed_obj = Utils::parse_obj("../SYCL-ray-tracing/data/OBJs/ite-orb.obj");
     //parsed_obj = Utils::parse_obj("../SYCL-ray-tracing/data/OBJs/pbrt_dragon.obj");
     //parsed_obj = Utils::parse_obj("../SYCL-ray-tracing/data/OBJs/MIS.obj");
 
@@ -108,14 +110,9 @@ int main(int argc, char* argv[])
     int skysphere_width, skysphere_height;
     std::cout << "Reading Environment Map..." << std::endl;
     //Image skysphere_data = Utils::read_image_float("../SYCL-ray-tracing/data/Skyspheres/AllSkyFree_Sky_EpicGloriousPink_EquirectDebug.jpg", skysphere_width, skysphere_height);
-    Image skysphere_data = Utils::read_image_float("../SYCL-ray-tracing/data/Skyspheres/evening_road_01_puresky_8k.hdr", skysphere_width, skysphere_height);
+    //Image skysphere_data = Utils::read_image_float("../SYCL-ray-tracing/data/Skyspheres/evening_road_01_puresky_8k.hdr", skysphere_width, skysphere_height);
+    Image skysphere_data = Utils::read_image_float("../SYCL-ray-tracing/data/Skyspheres/moonless_golf_8k.hdr", skysphere_width, skysphere_height);
     std::vector<float> env_map_cdf = Utils::compute_env_map_cdf(skysphere_data);
-
-    std::cout << "Importance Sampling Environment Map... ";
-    std::vector<ImageBin> skysphere_importance_bins;// = Utils::importance_split_skysphere(skysphere_data);
-    std::cout << skysphere_importance_bins.size() << " bins" << std::endl;
-
-    Utils::write_env_map_bins_to_file("sky_bins.hdr", skysphere_data, skysphere_importance_bins);
 
     std::cout << "[" << width << "x" << height << "]: " << SAMPLES_PER_KERNEL << " samples" << std::endl << std::endl;
 
@@ -130,9 +127,9 @@ int main(int argc, char* argv[])
         sphere_buffer,
         bvh,
         skysphere_data,
-        env_map_cdf,
-        skysphere_importance_bins);
-    render_kernel.set_camera(Camera::CORNELL_BOX_CAMERA);
+        env_map_cdf);
+    //render_kernel.set_camera(Camera::CORNELL_BOX_CAMERA);
+    render_kernel.set_camera(Camera::ITE_ORB_CAMERA);
     //render_kernel.set_camera(Camera::PBRT_DRAGON_CAMERA);
     //render_kernel.set_camera(Camera::MIS_CAMERA);
 
@@ -141,10 +138,10 @@ int main(int argc, char* argv[])
     auto stop = std::chrono::high_resolution_clock::now();
     std::cout << std::chrono::duration_cast<std::chrono::milliseconds>(stop - start).count() << "ms" << std::endl;
 
-    Image image_denoised_08 = Utils::OIDN_denoise(image_buffer, 0.65f);
+    Image image_denoised = Utils::OIDN_denoise(image_buffer, 1.0f);
 
-    write_image_png(image_buffer, "../TP_RT_output_good_08_exp0.75.png");
-    //write_image_png(image_denoised_08, "../TP_RT_output_good_08_exp0.75.png");
+    write_image_png(image_buffer, "../RT_output.png");
+    write_image_png(image_denoised, "../RT_output_denoised.png");
 
     return 0;
 }

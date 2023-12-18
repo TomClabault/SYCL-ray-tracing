@@ -74,7 +74,25 @@ ParsedOBJ Utils::parse_obj(const std::string& filepath)
     std::vector<SimpleMaterial>& materials_buffer = parsed_obj.materials;
     materials_buffer.push_back(SimpleMaterial{ Color(1.0f, 0.0f, 1.0f), Color(), 0.0f, 1.0f });
     for (const rapidobj::Material& material : rapidobj_result.materials)
-        materials_buffer.push_back(SimpleMaterial {Color(material.emission), Color(material.diffuse), material.metallic, material.roughness});
+    {
+        SimpleMaterial simple_material = SimpleMaterial{ Color(material.emission), Color(material.diffuse), material.metallic, material.roughness };
+
+        //A roughness = 0 will lead to a black image. To get a mirror material (as roughness 0 should be)
+        //we clamp it to 1.0e-5f instead of 0
+        simple_material.roughness = std::max(1.0e-5f, simple_material.roughness);
+
+        if (material.illum == 0)
+        {
+            //No OBJ PBR extension. This means that we will not have valid roughness and metalness
+            //so we're going to use the values of the default material
+
+            SimpleMaterial default_material;
+            simple_material.roughness = default_material.roughness;
+            simple_material.metalness = default_material.metalness;
+        }
+
+        materials_buffer.push_back(simple_material);
+    }
 
     return parsed_obj;
 }
@@ -100,6 +118,7 @@ Image Utils::read_image_float(const std::string& filepath, int& image_width, int
             int index = y * image_width + x;
             Color pixel_color = Color(pixels[index * 3 + 0], pixels[index * 3 + 1], pixels[index * 3 + 2], 0.0f);
             output[index] = pow(pixel_color, 2.2f); //Gamma correction included
+            output[index] = pixel_color; //Gamma correction included
         }
     }
 
