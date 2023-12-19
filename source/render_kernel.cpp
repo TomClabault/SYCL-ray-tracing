@@ -111,7 +111,8 @@ void RenderKernel::ray_trace_pixel(int x, int y) const
                     // ----------------- Direct lighting ----------------- //
                     // --------------------------------------------------- //
                     Color light_sample_radiance = sample_light_sources(ray, closest_hit_info, material, random_number_generator);
-                    Color env_map_radiance = sample_environment_map(ray, closest_hit_info, material, random_number_generator);
+                    //Color env_map_radiance = sample_environment_map(ray, closest_hit_info, material, random_number_generator);
+                    Color env_map_radiance = Color(0.0f);
 
                     // --------------------------------------- //
                     // ---------- Indirect lighting ---------- //
@@ -124,9 +125,9 @@ void RenderKernel::ray_trace_pixel(int x, int y) const
                     
                     if (bounce == 0)
                         sample_color += material.emission;
-                    sample_color += (light_sample_radiance) * throughput;
+                    sample_color += (light_sample_radiance + env_map_radiance) * throughput;
 
-                    if ((brdf.r == 0.0f && brdf.g == 0.0f && brdf.b == 0.0f) || brdf_pdf == 0.0f || std::isinf(brdf_pdf))
+                    if ((brdf.r == 0.0f && brdf.g == 0.0f && brdf.b == 0.0f) || brdf_pdf < 1.0e-8f || std::isinf(brdf_pdf))
                     {
                         next_ray_state = RayState::TERMINATED;
 
@@ -406,17 +407,17 @@ Color RenderKernel::cook_torrance_brdf_importance_sample(const SimpleMaterial& m
     if (dot(microfacet_normal, surface_normal) < 0.0f)
         //The microfacet normal that we sampled was under the surface, it can happen
         return Color(0.0f);
-    Vector to_light_direction = 2.0f * dot(microfacet_normal, view_direction) * microfacet_normal - view_direction;
+    Vector to_light_direction = normalize(2.0f * dot(microfacet_normal, view_direction) * microfacet_normal - view_direction);
     Vector halfway_vector = microfacet_normal;
     output_direction = to_light_direction;
 
     Color brdf_color = Color(0.0f, 0.0f, 0.0f);
     Color base_color = material.diffuse;
 
-    float NoV = std::max(0.0f, dot(surface_normal, view_direction));
-    float NoL = std::max(0.0f, dot(surface_normal, to_light_direction));
-    float NoH = std::max(0.0f, dot(surface_normal, halfway_vector));
-    float VoH = std::max(0.0f, dot(halfway_vector, view_direction));
+    float NoV = std::min(std::max(0.0f, dot(surface_normal, view_direction)), 1.0f);
+    float NoL = std::min(std::max(0.0f, dot(surface_normal, to_light_direction)), 1.0f);
+    float NoH = std::min(std::max(0.0f, dot(surface_normal, halfway_vector)), 1.0f);
+    float VoH = std::min(std::max(0.0f, dot(halfway_vector, view_direction)), 1.0f);
 
     if (NoV > 0.0f && NoL > 0.0f && NoH > 0.0f)
     {
@@ -611,11 +612,10 @@ Color RenderKernel::sample_environment_map(const Ray& ray, const HitInfo& closes
         if (!INTERSECT_SCENE(Ray(closest_hit_info.inter_point + closest_hit_info.normal_at_intersection * 1.0e-5f, brdf_sampled_dir), trash))
         {
             Color skysphere_color = sample_environment_map_from_direction(brdf_sampled_dir);
-            float theta_brdf_dir = std::acos(-brdf_sampled_dir.y);
+            float theta_brdf_dir = std::acos(brdf_sampled_dir.z);
             float sin_theta_bdrf_dir = std::sin(theta_brdf_dir);
             float env_map_pdf = skysphere_color.luminance() / m_env_map_cdf[m_env_map_cdf.size() - 1];
 
-            //TODO missing reflection on the right side of the cornell box because of the PDF below
             env_map_pdf *= m_environment_map.width() * m_environment_map.height();
             env_map_pdf /= (2.0f * M_PI * M_PI * sin_theta_bdrf_dir);
 

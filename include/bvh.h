@@ -2,6 +2,7 @@
 #define BVH_H
 
 #include <array>
+#include <atomic>
 #include <cmath>
 #include <deque>
 #include <limits>
@@ -251,8 +252,6 @@ public:
         //If this node has been subdivided (and thus cannot accept any triangles),
         //this boolean will be set to false
         bool _is_leaf = true;
-
-        int debug_index = -1;//TODO remove
 
         std::vector<int> _triangles;
         std::array<BVH::OctreeNode*, 8> _children;

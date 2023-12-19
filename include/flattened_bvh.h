@@ -36,8 +36,6 @@ public:
 
         int nb_triangles = 0;
         int is_leaf;
-
-        int debug_index;//TODO remove
     };
 
     bool intersect(const Ray& ray, HitInfo& hit_info, const std::vector<Triangle>& triangles) const;

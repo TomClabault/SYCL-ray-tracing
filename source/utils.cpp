@@ -116,9 +116,7 @@ Image Utils::read_image_float(const std::string& filepath, int& image_width, int
         for (int x = 0; x < image_width; x++)
         {
             int index = y * image_width + x;
-            Color pixel_color = Color(pixels[index * 3 + 0], pixels[index * 3 + 1], pixels[index * 3 + 2], 0.0f);
-            output[index] = pow(pixel_color, 2.2f); //Gamma correction included
-            output[index] = pixel_color; //Gamma correction included
+            output[index] = Color(pixels[index * 3 + 0], pixels[index * 3 + 1], pixels[index * 3 + 2], 0.0f);
         }
     }
 
