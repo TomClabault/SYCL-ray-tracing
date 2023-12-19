@@ -11,7 +11,7 @@
 #include "xorshift.h"
 
 #define SAMPLES_PER_KERNEL 16
-#define MAX_BOUNCES 8
+#define MAX_BOUNCES 15
 #define USE_BVH 1
 
 struct LightSourceInformation

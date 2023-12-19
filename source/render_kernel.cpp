@@ -124,9 +124,9 @@ void RenderKernel::ray_trace_pixel(int x, int y) const
                     
                     if (bounce == 0)
                         sample_color += material.emission;
-                    sample_color += (light_sample_radiance + env_map_radiance) * throughput;
+                    sample_color += (light_sample_radiance) * throughput;
 
-                    if ((brdf.r == 0.0f && brdf.g == 0.0f && brdf.b == 0.0f) || brdf_pdf < 1.0e-8f || std::isinf(brdf_pdf))
+                    if ((brdf.r == 0.0f && brdf.g == 0.0f && brdf.b == 0.0f) || brdf_pdf == 0.0f || std::isinf(brdf_pdf))
                     {
                         next_ray_state = RayState::TERMINATED;
 
@@ -144,7 +144,7 @@ void RenderKernel::ray_trace_pixel(int x, int y) const
             }
             else if (next_ray_state == MISSED)
             {
-                if (bounce == 1)
+                //if (bounce == 1)
                 {
                     //We're only getting the skysphere radiance for the first rays because the
                     //syksphere is importance sampled
@@ -213,7 +213,7 @@ void RenderKernel::render()
 
 Color RenderKernel::lambertian_brdf(const SimpleMaterial& material, const Vector& to_light_direction, const Vector& view_direction, const Vector& surface_normal) const
 {
-    return material.diffuse / (float)M_PI;
+    return material.diffuse * M_1_PI;
 }
 
 Color fresnel_schlick(Color F0, float NoV)
@@ -226,7 +226,7 @@ float GGX_normal_distribution(float alpha, float NoH)
     float alpha2 = alpha * alpha;
     float NoH2 = NoH * NoH;
     float b = (NoH2 * (alpha2 - 1.0f) + 1.0f);
-    return alpha2 * (1.0f / (float)M_PI) / std::max(b * b, 1.0e-7f);
+    return alpha2 * M_1_PI / std::max(b * b, 1.0e-7f);
 }
 
 float G1_schlick_ggx(float k, float dot_prod)
@@ -406,17 +406,17 @@ Color RenderKernel::cook_torrance_brdf_importance_sample(const SimpleMaterial& m
     if (dot(microfacet_normal, surface_normal) < 0.0f)
         //The microfacet normal that we sampled was under the surface, it can happen
         return Color(0.0f);
-    Vector to_light_direction = normalize(2.0f * dot(microfacet_normal, view_direction) * microfacet_normal - view_direction);
+    Vector to_light_direction = 2.0f * dot(microfacet_normal, view_direction) * microfacet_normal - view_direction;
     Vector halfway_vector = microfacet_normal;
     output_direction = to_light_direction;
 
     Color brdf_color = Color(0.0f, 0.0f, 0.0f);
     Color base_color = material.diffuse;
 
-    float NoV = std::min(std::max(0.0f, dot(surface_normal, view_direction)), 1.0f);
-    float NoL = std::min(std::max(0.0f, dot(surface_normal, to_light_direction)), 1.0f);
-    float NoH = std::min(std::max(0.0f, dot(surface_normal, halfway_vector)), 1.0f);
-    float VoH = std::min(std::max(0.0f, dot(halfway_vector, view_direction)), 1.0f);
+    float NoV = std::max(0.0f, dot(surface_normal, view_direction));
+    float NoL = std::max(0.0f, dot(surface_normal, to_light_direction));
+    float NoH = std::max(0.0f, dot(surface_normal, halfway_vector));
+    float VoH = std::max(0.0f, dot(halfway_vector, view_direction));
 
     if (NoV > 0.0f && NoL > 0.0f && NoH > 0.0f)
     {
