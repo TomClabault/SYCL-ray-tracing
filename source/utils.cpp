@@ -146,7 +146,7 @@ std::vector<float> Utils::compute_env_map_cdf(const Image &skysphere)
 Image Utils::OIDN_denoise(const Image& image, float blend_factor)
 {
     // Create an Open Image Denoise device
-    oidn::DeviceRef device = oidn::newDevice(); // CPU or GPU if available
+    static oidn::DeviceRef device = oidn::newDevice(); // CPU or GPU if available
     device.commit();
 
     // Create buffers for input/output images accessible by both host (CPU) and device (CPU/GPU)
@@ -156,7 +156,7 @@ Image Utils::OIDN_denoise(const Image& image, float blend_factor)
     oidn::BufferRef colorBuf = device.newBuffer(width * height * 3 * sizeof(float));
     // Create a filter for denoising a beauty (color) image using optional auxiliary images too
     // This can be an expensive operation, so try no to create a new filter for every image!
-    oidn::FilterRef filter = device.newFilter("RT"); // generic ray tracing filter
+    static oidn::FilterRef filter = device.newFilter("RT"); // generic ray tracing filter
     filter.setImage("color", colorBuf, oidn::Format::Float3, width, height); // beauty
     filter.setImage("output", colorBuf, oidn::Format::Float3, width, height); // denoised beauty
     filter.set("hdr", true); // beauty image is HDR
