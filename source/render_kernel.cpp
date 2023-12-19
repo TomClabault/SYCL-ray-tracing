@@ -111,7 +111,7 @@ void RenderKernel::ray_trace_pixel(int x, int y) const
                     // ----------------- Direct lighting ----------------- //
                     // --------------------------------------------------- //
                     Color light_sample_radiance = sample_light_sources(ray, closest_hit_info, material, random_number_generator);
-                    //Color env_map_radiance = sample_environment_map(ray, closest_hit_info, material, random_number_generator);
+                    Color env_map_radiance = sample_environment_map(ray, closest_hit_info, material, random_number_generator);
 
                     // --------------------------------------- //
                     // ---------- Indirect lighting ---------- //
@@ -124,7 +124,7 @@ void RenderKernel::ray_trace_pixel(int x, int y) const
                     
                     if (bounce == 0)
                         sample_color += material.emission;
-                    sample_color += (light_sample_radiance) * throughput;
+                    sample_color += (light_sample_radiance + env_map_radiance) * throughput;
 
                     if ((brdf.r == 0.0f && brdf.g == 0.0f && brdf.b == 0.0f) || brdf_pdf < 1.0e-8f || std::isinf(brdf_pdf))
                     {
@@ -144,7 +144,7 @@ void RenderKernel::ray_trace_pixel(int x, int y) const
             }
             else if (next_ray_state == MISSED)
             {
-                //if (bounce == 1)
+                if (bounce == 1)
                 {
                     //We're only getting the skysphere radiance for the first rays because the
                     //syksphere is importance sampled
@@ -182,9 +182,9 @@ void RenderKernel::ray_trace_pixel(int x, int y) const
 #include <atomic>
 #include <omp.h>
 
-#define DEBUG_PIXEL 1
-#define PIXEL_X 94
-#define PIXEL_Y 96
+#define DEBUG_PIXEL 0
+#define PIXEL_X 82
+#define PIXEL_Y 187
 void RenderKernel::render()
 {
     std::atomic<int> lines_completed = 0;
