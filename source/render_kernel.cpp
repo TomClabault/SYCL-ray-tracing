@@ -111,8 +111,8 @@ void RenderKernel::ray_trace_pixel(int x, int y) const
                     // ----------------- Direct lighting ----------------- //
                     // --------------------------------------------------- //
                     Color light_sample_radiance = sample_light_sources(ray, closest_hit_info, material, random_number_generator);
-                    //Color env_map_radiance = sample_environment_map(ray, closest_hit_info, material, random_number_generator);
-                    Color env_map_radiance = Color(0.0f);
+                    Color env_map_radiance = sample_environment_map(ray, closest_hit_info, material, random_number_generator);
+                    //Color env_map_radiance = Color(0.0f);
 
                     // --------------------------------------- //
                     // ---------- Indirect lighting ---------- //
@@ -145,7 +145,7 @@ void RenderKernel::ray_trace_pixel(int x, int y) const
             }
             else if (next_ray_state == MISSED)
             {
-                //if (bounce == 1)
+                if (bounce == 1)
                 {
                     //We're only getting the skysphere radiance for the first rays because the
                     //syksphere is importance sampled
