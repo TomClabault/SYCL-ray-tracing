@@ -184,8 +184,8 @@ void RenderKernel::ray_trace_pixel(int x, int y) const
 #include <omp.h>
 
 #define DEBUG_PIXEL 0
-#define PIXEL_X 82
-#define PIXEL_Y 187
+#define PIXEL_X 104
+#define PIXEL_Y 216
 void RenderKernel::render()
 {
     std::atomic<int> lines_completed = 0;
@@ -224,10 +224,14 @@ Color fresnel_schlick(Color F0, float NoV)
 
 float GGX_normal_distribution(float alpha, float NoH)
 {
+    //To avoid numerical instability when NoH basically == 1, i.e when the
+    //material is a perfect mirror and the normal distribution function is a Dirac
+
+    NoH = std::min(NoH, 0.999999f);
     float alpha2 = alpha * alpha;
     float NoH2 = NoH * NoH;
     float b = (NoH2 * (alpha2 - 1.0f) + 1.0f);
-    return alpha2 * M_1_PI / std::max(b * b, 1.0e-7f);
+    return alpha2 * M_1_PI / (b * b);// std::max(b * b, 1.0e-18f);
 }
 
 float G1_schlick_ggx(float k, float dot_prod)
@@ -405,7 +409,7 @@ Color RenderKernel::cook_torrance_brdf_importance_sample(const SimpleMaterial& m
     Vector microfacet_normal_local_space = Vector(std::cos(phi) * sin_theta, std::sin(phi) * sin_theta, std::cos(theta));
     Vector microfacet_normal = rotate_vector_around_normal(surface_normal, microfacet_normal_local_space);
     if (dot(microfacet_normal, surface_normal) < 0.0f)
-        //The microfacet normal that we sampled was under the surface, it can happen
+        //The microfacet normal that we sampled was under the surface, this can happen
         return Color(0.0f);
     Vector to_light_direction = normalize(2.0f * dot(microfacet_normal, view_direction) * microfacet_normal - view_direction);
     Vector halfway_vector = microfacet_normal;
@@ -414,10 +418,10 @@ Color RenderKernel::cook_torrance_brdf_importance_sample(const SimpleMaterial& m
     Color brdf_color = Color(0.0f, 0.0f, 0.0f);
     Color base_color = material.diffuse;
 
-    float NoV = std::min(std::max(0.0f, dot(surface_normal, view_direction)), 1.0f);
-    float NoL = std::min(std::max(0.0f, dot(surface_normal, to_light_direction)), 1.0f);
-    float NoH = std::min(std::max(0.0f, dot(surface_normal, halfway_vector)), 1.0f);
-    float VoH = std::min(std::max(0.0f, dot(halfway_vector, view_direction)), 1.0f);
+    float NoV = std::max(0.0f, dot(surface_normal, view_direction));
+    float NoL = std::max(0.0f, dot(surface_normal, to_light_direction));
+    float NoH = std::max(0.0f, dot(surface_normal, halfway_vector));
+    float VoH = std::max(0.0f, dot(halfway_vector, view_direction));
 
     if (NoV > 0.0f && NoL > 0.0f && NoH > 0.0f)
     {
@@ -425,12 +429,13 @@ Color RenderKernel::cook_torrance_brdf_importance_sample(const SimpleMaterial& m
         Color F;
         float D, G;
 
-        //F0 = 0.04 for dielectrics, 1.0 for metals (approximation)
-        Color F0 = Color(0.04f * (1.0f - metalness)) + metalness * base_color;
 
         //GGX Distribution function
-        F = fresnel_schlick(F0, VoH);
         D = GGX_normal_distribution(alpha, NoH);
+
+        //F0 = 0.04 for dielectrics, 1.0 for metals (approximation)
+        Color F0 = Color(0.04f * (1.0f - metalness)) + metalness * base_color;
+        F = fresnel_schlick(F0, VoH);
         G = GGX_smith_masking_shadowing(alpha, NoV, NoL);
 
         Color kD = Color(1.0f - metalness); //Metals do not have a diffuse part

@@ -44,9 +44,9 @@ int main(int argc, char* argv[])
     std::cout << "Reading OBJ..." << std::endl;
     ParsedOBJ parsed_obj;
     //parsed_obj = Utils::parse_obj("../../data/cornell.obj");
-    //parsed_obj = Utils::parse_obj("../SYCL-ray-tracing/data/OBJs/cornell_pbr.obj");
+    parsed_obj = Utils::parse_obj("../SYCL-ray-tracing/data/OBJs/cornell_pbr.obj");
     //parsed_obj = Utils::parse_obj("../SYCL-ray-tracing/data/OBJs/ite-orb.obj");
-    parsed_obj = Utils::parse_obj("../SYCL-ray-tracing/data/OBJs/pbrt_dragon.obj");
+    //parsed_obj = Utils::parse_obj("../SYCL-ray-tracing/data/OBJs/pbrt_dragon.obj");
     //parsed_obj = Utils::parse_obj("../SYCL-ray-tracing/data/OBJs/ganesha_scene.obj");
     //parsed_obj = Utils::parse_obj("../SYCL-ray-tracing/data/OBJs/MIS.obj");
 
@@ -85,10 +85,10 @@ int main(int argc, char* argv[])
         bvh,
         skysphere_data,
         env_map_cdf);
-    //render_kernel.set_camera(Camera::CORNELL_BOX_CAMERA);
+    render_kernel.set_camera(Camera::CORNELL_BOX_CAMERA);
     //render_kernel.set_camera(Camera::GANESHA_CAMERA);
     //render_kernel.set_camera(Camera::ITE_ORB_CAMERA);
-    render_kernel.set_camera(Camera::PBRT_DRAGON_CAMERA);
+    //render_kernel.set_camera(Camera::PBRT_DRAGON_CAMERA);
     //render_kernel.set_camera(Camera::MIS_CAMERA);
 
     render_kernel.render();

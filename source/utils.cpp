@@ -79,7 +79,7 @@ ParsedOBJ Utils::parse_obj(const std::string& filepath)
 
         //A roughness = 0 will lead to a black image. To get a mirror material (as roughness 0 should be)
         //we clamp it to 1.0e-5f instead of 0
-        simple_material.roughness = std::max(5.0e-4f, simple_material.roughness);
+        simple_material.roughness = std::max(1.0e-2f, simple_material.roughness);
 
         if (material.illum == 0)
         {
