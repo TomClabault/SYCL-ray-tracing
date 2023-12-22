@@ -195,7 +195,7 @@ void RenderKernel::render()
     {
         for (int x = PIXEL_X; x < m_frame_buffer.width(); x++)
 #else
-//#pragma omp parallel for schedule(dynamic)
+#pragma omp parallel for schedule(dynamic)
     for (int y = 0; y < m_frame_buffer.height(); y++)
     {
         for (int x = 0; x < m_frame_buffer.width(); x++)

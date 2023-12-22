@@ -91,11 +91,7 @@ int main(int argc, char* argv[])
 
     int skysphere_width, skysphere_height;
     std::cout << "Reading Environment Map " << arguments.skysphere_file_path << " ..." << std::endl;
-    Image skysphere_data;
-    if (arguments.skysphere_file_path == "")
-        skysphere_data = Image(4, 2);
-    else
-        skysphere_data = Utils::read_image_float(arguments.skysphere_file_path, skysphere_width, skysphere_height);
+    Image skysphere_data = Utils::read_image_float(arguments.skysphere_file_path, skysphere_width, skysphere_height);
     //Image skysphere_data = Utils::read_image_float("../SYCL-ray-tracing/data/Skyspheres/AllSkyFree_Sky_EpicGloriousPink_EquirectDebug.jpg", skysphere_width, skysphere_height);
     //Image skysphere_data = Utils::read_image_float("../SYCL-ray-tracing/data/Skyspheres/evening_road_01_puresky_8k.hdr", skysphere_width, skysphere_height);
     //Image skysphere_data = Utils::read_image_float("../SYCL-ray-tracing/data/Skyspheres/moonless_golf_8k.hdr", skysphere_width, skysphere_height);
