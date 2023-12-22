@@ -12,6 +12,13 @@ project(SYCL_RayTracing LANGUAGES CXX)
 
 file(GLOB SYCL_HEADERS "/opt/intel/oneapi/compiler/2023.2.1/linux/include/sycl/*.hpp" "/opt/intel/oneapi/compiler/2023.2.1/linux/include/sycl/CL/*.hpp")
 
+set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS}")
+
+set(OIDN_LIB_DIR "oidn/lib/")
+set(THREADS_PREFER_PTHREAD_FLAG ON)
+
+link_directories(${CMAKE_SOURCE_DIR}/${OIDN_LIB_DIR})
+
 add_executable(SYCL_RayTracing
     ${SYCL_HEADERS}
 
@@ -58,20 +65,11 @@ add_executable(SYCL_RayTracing
     oidn/include/OpenImageDenoise/oidn.hpp
     oidn/include/OpenImageDenoise/oidn.h
     oidn/include/OpenImageDenoise/config.h)
+	
+set_property(TARGET SYCL_RayTracing PROPERTY CXX_STANDARD 20)
 
-set_property(TARGET SYCL_RayTracing PROPERTY CXX_STANDARD 17)
-
-set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS}")
-
-set(OIDN_LIB_DIR "/usr/local/lib/")
-set(OIDN_LIBRARIES "OpenImageDenoise")
-
-set(THREADS_PREFER_PTHREAD_FLAG ON)
 find_package(OpenMP)
-target_link_libraries(SYCL_RayTracing PRIVATE OpenMP::OpenMP_CXX ${OIDN_LIBRARIES})
-
-link_directories(${OIDN_LIB_DIR})
-
+target_link_libraries(SYCL_RayTracing PRIVATE OpenMP::OpenMP_CXX OpenImageDenoise)
 
 target_include_directories(SYCL_RayTracing PRIVATE "/opt/intel/oneapi/compiler/2023.2.1/linux/include/")
 target_include_directories(SYCL_RayTracing PRIVATE "include/")
