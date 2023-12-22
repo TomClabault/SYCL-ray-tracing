@@ -23,7 +23,7 @@ ParsedOBJ Utils::parse_obj(const std::string& filepath)
         std::cout << "There was an error loading the OBJ file: " << rapidobj_result.error.code.message() << std::endl;
         std::cin.get();
 
-        return parsed_obj;
+        std::exit(1);
     }
 
     rapidobj::Triangulate(rapidobj_result);
@@ -107,7 +107,7 @@ Image Utils::read_image_float(const std::string& filepath, int& image_width, int
     if(!pixels)
     {
         std::cout << "Error reading image " << filepath << std::endl;
-        return Image();
+        std::exit(1);
     }
 
     Image output(image_width, image_height);

@@ -29,24 +29,51 @@ Sphere add_sphere_to_scene(ParsedOBJ& parsed_obj, const Point& center, float rad
     return sphere;
 }
 
+struct CommandLineArguments
+{
+    std::string obj_file_path = "data/OBJs/cornell_pbr.obj";
+    std::string skysphere_file_path = "data/Skyspheres/evening_road_01_puresky_2k.hdr";
+
+    int render_width = 512, render_height = 512;
+    int render_samples = 64;
+    int bounces = 8;
+};
+
+void process_command_line(int argc, char** argv, CommandLineArguments& arguments)
+{
+    for (int i = 1; i < argc; i++)
+    {
+        std::string string_argv = std::string(argv[i]);
+        if (string_argv.starts_with("--sky="))
+            arguments.skysphere_file_path = string_argv.substr(6);
+        else if (string_argv.starts_with("--w="))
+            arguments.render_width = std::atoi(string_argv.substr(4).c_str());
+        else if (string_argv.starts_with("--h="))
+            arguments.render_height = std::atoi(string_argv.substr(4).c_str());
+        else if (string_argv.starts_with("--samples="))
+            arguments.render_samples = std::atoi(string_argv.substr(10).c_str());
+        else if (string_argv.starts_with("--bounces="))
+            arguments.bounces = std::atoi(string_argv.substr(10).c_str());
+        else
+            //Assuming obj file path
+            arguments.obj_file_path = string_argv;
+    }
+}
+
 int main(int argc, char* argv[])
 {
-    //TODO argument pour l'OBJ
-    //TODO argument pour l'HDR
-    //Fournir l'HDR evening road 01 2k
-    regression_tests();
-    std::cout << std::endl;
+    CommandLineArguments arguments;
+    process_command_line(argc, argv, arguments);
 
-    const int width = 512;
-    const int height = 512;
+    const int width = arguments.render_width;
+    const int height = arguments.render_height;
 
-
-    std::cout << "Reading OBJ..." << std::endl;
-    ParsedOBJ parsed_obj;
+    std::cout << "Reading OBJ " << arguments.obj_file_path << " ..." << std::endl;
+    ParsedOBJ parsed_obj = Utils::parse_obj(arguments.obj_file_path);
     //parsed_obj = Utils::parse_obj("../../data/cornell.obj");
     //parsed_obj = Utils::parse_obj("../SYCL-ray-tracing/data/OBJs/cornell_pbr.obj");
     //parsed_obj = Utils::parse_obj("../SYCL-ray-tracing/data/OBJs/ite-orb.obj");
-    parsed_obj = Utils::parse_obj("../SYCL-ray-tracing/data/OBJs/pbrt_dragon.obj");
+    //parsed_obj = Utils::parse_obj("../SYCL-ray-tracing/data/OBJs/pbrt_dragon.obj");
     //parsed_obj = Utils::parse_obj("../SYCL-ray-tracing/data/OBJs/ganesha_scene.obj");
     //parsed_obj = Utils::parse_obj("../SYCL-ray-tracing/data/OBJs/MIS.obj");
 
@@ -63,19 +90,26 @@ int main(int argc, char* argv[])
     std::vector<Sphere> sphere_buffer = spheres;
 
     int skysphere_width, skysphere_height;
-    std::cout << "Reading Environment Map..." << std::endl;
+    std::cout << "Reading Environment Map " << arguments.skysphere_file_path << " ..." << std::endl;
+    Image skysphere_data;
+    if (arguments.skysphere_file_path == "")
+        skysphere_data = Image(4, 2);
+    else
+        skysphere_data = Utils::read_image_float(arguments.skysphere_file_path, skysphere_width, skysphere_height);
     //Image skysphere_data = Utils::read_image_float("../SYCL-ray-tracing/data/Skyspheres/AllSkyFree_Sky_EpicGloriousPink_EquirectDebug.jpg", skysphere_width, skysphere_height);
-    Image skysphere_data = Utils::read_image_float("../SYCL-ray-tracing/data/Skyspheres/evening_road_01_puresky_8k.hdr", skysphere_width, skysphere_height);
+    //Image skysphere_data = Utils::read_image_float("../SYCL-ray-tracing/data/Skyspheres/evening_road_01_puresky_8k.hdr", skysphere_width, skysphere_height);
     //Image skysphere_data = Utils::read_image_float("../SYCL-ray-tracing/data/Skyspheres/moonless_golf_8k.hdr", skysphere_width, skysphere_height);
     //Image skysphere_data = Utils::read_image_float("../SYCL-ray-tracing/data/Skyspheres/rustig_koppie_puresky_8k.hdr", skysphere_width, skysphere_height);
     //Image skysphere_data = Utils::read_image_float("../SYCL-ray-tracing/data/Skyspheres/satara_night_8k.hdr", skysphere_width, skysphere_height);
     std::vector<float> env_map_cdf = Utils::compute_env_map_cdf(skysphere_data);
 
-    std::cout << "[" << width << "x" << height << "]: " << SAMPLES_PER_KERNEL << " samples" << std::endl << std::endl;
+    std::cout << "[" << width << "x" << height << "]: " << arguments.render_samples << " samples" << std::endl << std::endl;
 
     auto start = std::chrono::high_resolution_clock::now();
-    Image image_buffer(width, height);
-    auto render_kernel = RenderKernel(width, height,
+    Image image_buffer(arguments.render_width, arguments.render_height);
+    auto render_kernel = RenderKernel(
+        arguments.render_width, arguments.render_height,
+        arguments.render_samples, arguments.bounces,
         image_buffer,
         triangle_buffer,
         materials_buffer,
@@ -85,10 +119,10 @@ int main(int argc, char* argv[])
         bvh,
         skysphere_data,
         env_map_cdf);
-    //render_kernel.set_camera(Camera::CORNELL_BOX_CAMERA);
+    render_kernel.set_camera(Camera::CORNELL_BOX_CAMERA);
     //render_kernel.set_camera(Camera::GANESHA_CAMERA);
     //render_kernel.set_camera(Camera::ITE_ORB_CAMERA);
-    render_kernel.set_camera(Camera::PBRT_DRAGON_CAMERA);
+    //render_kernel.set_camera(Camera::PBRT_DRAGON_CAMERA);
     //render_kernel.set_camera(Camera::MIS_CAMERA);
 
     render_kernel.render();
@@ -98,8 +132,8 @@ int main(int argc, char* argv[])
 
     Image image_denoised = Utils::OIDN_denoise(image_buffer, 1.0f);
 
-    write_image_png(image_buffer, "../RT_output.png");
-    write_image_png(image_denoised, "../RT_output_denoised.png");
+    write_image_png(image_buffer, "RT_output.png");
+    write_image_png(image_denoised, "RT_output_denoised.png");
 
     return 0;
 }

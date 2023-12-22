@@ -74,7 +74,7 @@ Ray RenderKernel::get_camera_ray(float x, float y) const
 
 void RenderKernel::ray_trace_pixel(int x, int y) const
 {
-    xorshift32_generator random_number_generator(31 + x * y * SAMPLES_PER_KERNEL);
+    xorshift32_generator random_number_generator(31 + x * y * m_render_samples);
     //Generating some numbers to make sure the generators of each thread spread apart
     //If not doing this, the generator shows clear artifacts until it has generated
     //a few numbers
@@ -82,7 +82,7 @@ void RenderKernel::ray_trace_pixel(int x, int y) const
         random_number_generator();
 
     Color final_color = Color(0.0f, 0.0f, 0.0f);
-    for (int sample = 0; sample < SAMPLES_PER_KERNEL; sample++)
+    for (int sample = 0; sample < m_render_samples; sample++)
     {
         //Jittered around the center
         float x_jittered = (x + 0.5f) + random_number_generator() - 1.0f;
@@ -95,7 +95,7 @@ void RenderKernel::ray_trace_pixel(int x, int y) const
         Color sample_color = Color(0.0f, 0.0f, 0.0f);
         RayState next_ray_state = RayState::BOUNCE;
 
-        for (int bounce = 0; bounce < MAX_BOUNCES; bounce++)
+        for (int bounce = 0; bounce < m_max_bounces; bounce++)
         {
             if (next_ray_state == BOUNCE)
             {
@@ -164,7 +164,7 @@ void RenderKernel::ray_trace_pixel(int x, int y) const
         final_color += sample_color;
     }
 
-    final_color /= SAMPLES_PER_KERNEL;
+    final_color /= m_render_samples;
     final_color.a = 0.0f;
     m_frame_buffer[y * m_width + x] += final_color;
 
@@ -195,7 +195,7 @@ void RenderKernel::render()
     {
         for (int x = PIXEL_X; x < m_frame_buffer.width(); x++)
 #else
-#pragma omp parallel for schedule(dynamic)
+//#pragma omp parallel for schedule(dynamic)
     for (int y = 0; y < m_frame_buffer.height(); y++)
     {
         for (int x = 0; x < m_frame_buffer.width(); x++)
@@ -205,10 +205,8 @@ void RenderKernel::render()
         lines_completed++;
 
         if (omp_get_thread_num() == 0)
-        {
             if (lines_completed % (m_frame_buffer.height() / 25))
                 std::cout << lines_completed / (float)m_frame_buffer.height() * 100 << "%" << std::endl;
-        }
     }
 }
 

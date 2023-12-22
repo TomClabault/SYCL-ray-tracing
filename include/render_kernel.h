@@ -10,8 +10,6 @@
 #include "triangle.h"
 #include "xorshift.h"
 
-#define SAMPLES_PER_KERNEL 64
-#define MAX_BOUNCES 25
 #define USE_BVH 1
 
 struct LightSourceInformation
@@ -24,6 +22,7 @@ class RenderKernel
 {
 public:
     RenderKernel(int width, int height,
+                int render_samples, int max_bounces,
                  Image& image_buffer,
                  const std::vector<Triangle>& triangle_buffer_accessor,
                  const std::vector<SimpleMaterial>& materials_buffer_accessor,
@@ -34,6 +33,8 @@ public:
                  const Image& skysphere,
                  const std::vector<float>& env_map_cdf) : 
         m_width(width), m_height(height),
+        m_render_samples(render_samples),
+        m_max_bounces(max_bounces),
         m_frame_buffer(image_buffer),
         m_triangle_buffer_access(triangle_buffer_accessor),
         m_materials_buffer_access(materials_buffer_accessor),
@@ -74,6 +75,8 @@ public:
 
 private:
     int m_width, m_height;
+    int m_render_samples; 
+    int m_max_bounces;
 
     Image& m_frame_buffer;
 
