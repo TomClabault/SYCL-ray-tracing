@@ -104,10 +104,10 @@ int main(int argc, char* argv[])
         bvh,
         skysphere_data,
         env_map_cdf);
-    render_kernel.set_camera(Camera::CORNELL_BOX_CAMERA);
+    //render_kernel.set_camera(Camera::CORNELL_BOX_CAMERA);
     //render_kernel.set_camera(Camera::GANESHA_CAMERA);
     //render_kernel.set_camera(Camera::ITE_ORB_CAMERA);
-    //render_kernel.set_camera(Camera::PBRT_DRAGON_CAMERA);
+    render_kernel.set_camera(Camera::PBRT_DRAGON_CAMERA);
     //render_kernel.set_camera(Camera::MIS_CAMERA);
 
     render_kernel.render();
@@ -115,10 +115,14 @@ int main(int argc, char* argv[])
     auto stop = std::chrono::high_resolution_clock::now();
     std::cout << std::chrono::duration_cast<std::chrono::milliseconds>(stop - start).count() << "ms" << std::endl;
 
-    Image image_denoised = Utils::OIDN_denoise(image_buffer, 1.0f);
+    Image image_denoised_1 = Utils::OIDN_denoise(image_buffer, 1.0f);
+    Image image_denoised_075 = Utils::OIDN_denoise(image_buffer, 0.75f);
+    Image image_denoised_05 = Utils::OIDN_denoise(image_buffer, 0.5f);
 
     write_image_png(image_buffer, "RT_output.png");
-    write_image_png(image_denoised, "RT_output_denoised.png");
+    write_image_png(image_denoised_1, "RT_output_denoised_1.png");
+    write_image_png(image_denoised_075, "RT_output_denoised_0.75.png");
+    write_image_png(image_denoised_05, "RT_output_denoised_0.5.png");
 
     return 0;
 }
